@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+include environment.yml
+recursive-include netlogopy *.nlogo *.nls
+recursive-include Examples *.py

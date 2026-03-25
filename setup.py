@@ -5,39 +5,49 @@ import os
 here = os.path.abspath(os.path.dirname(__file__))
 
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
-    long_description = "\n" + fh.read()
+    long_description = fh.read()
 
-VERSION = '0.0.20'
-DESCRIPTION = 'netlogopy : Usage netlogo by python'
-LONG_DESCRIPTION = 'netlogopy : Usage netlogo by python () '
+VERSION = '0.1.0'
+DESCRIPTION = 'netlogopy: Bridge NetLogo and Python for advanced agent-based simulations'
 
-# Setting up
 setup(
     name="netlogopy",
     version=VERSION,
-    author="BOUAZIZ (BOUAZIZ NOURDDINE)",
-    author_email="<nourddine.bouaziz.dz@gmail.com>",
+    author="Nourddine Bouaziz",
+    author_email="nourddine.bouaziz.dz@gmail.com",
     description=DESCRIPTION,
-    long_description_content_type="text/markdown",
     long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/Bouaziz19/netlogopy",
+    project_urls={
+        "Bug Tracker": "https://github.com/Bouaziz19/netlogopy/issues",
+        "Source Code": "https://github.com/Bouaziz19/netlogopy",
+    },
     packages=find_packages(),
     include_package_data=True,
-    data_files=[
-        ('netlogo', ['netlogopy/netlogopy.nlogo','netlogopy/base.nls']),
-    ],
-    install_requires=['nl4py'],
-    keywords=['python', 'netlogo', 'simulation', 'multi agent'],
+    package_data={
+        "netlogopy": ["*.nlogo", "*.nls"],
+    },
+    python_requires=">=3.6",
+    install_requires=["nl4py"],
+    keywords=["python", "netlogo", "simulation", "multi-agent", "agent-based modeling", "ABM"],
     classifiers=[
-        "Development Status :: 1 - Planning",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Operating System :: Unix",
-        "Operating System :: MacOS :: MacOS X",
-        "Operating System :: Microsoft :: Windows",
-    ]
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    ],
 )
 
-# python setup.py bdist_wheel
-# twine upload dist/*
-#   username = __token__
-#   password = # un jeton de projet 
+# Build and publish:
+#   python -m build
+#   twine upload dist/*

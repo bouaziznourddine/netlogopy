@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "netlogopy"
+version = "0.1.0"
+description = "Bridge NetLogo and Python for advanced agent-based simulations"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Nourddine Bouaziz", email = "nourddine.bouaziz.dz@gmail.com" }
+]
+requires-python = ">=3.6"
+dependencies = ["nl4py"]
+keywords = ["python", "netlogo", "simulation", "multi-agent", "agent-based modeling", "ABM"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/Bouaziz19/netlogopy"
+"Bug Tracker" = "https://github.com/Bouaziz19/netlogopy/issues"
+"Source Code" = "https://github.com/Bouaziz19/netlogopy"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+netlogopy = ["*.nlogo", "*.nls"]

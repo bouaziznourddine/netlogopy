@@ -1,4 +1,4 @@
-extensions [ matrix csv array py ]
+; extensions removed - not used by any procedure in this model
 breed [pyturtles pyturtle]
 directed-link-breed [streets street]
 patches-own [free]
@@ -12,6 +12,7 @@ globals[
   list_shape_size
   list_shape_color
   list_link
+  last-created-id
 ]
 to setup
   file-close-all
@@ -114,18 +115,242 @@ to-report create-street-ft [data]
 end
 to-report create-pyturtle-xyid [data]
   let idd 0
-
-  create-ordered-pyturtles 1  [
-              set xcor item 0  data
-              set ycor item 1  data
-              set idd who
-              set shape  item 2  data
-              set size item 3  data
-              set color item  4  data
-              set label item  5  data
-              set label-color item  6  data]
+  create-ordered-pyturtles 1 [
+    set xcor        item 0 data
+    set ycor        item 1 data
+    set idd         who
+    set shape       item 2 data
+    set size        item 3 data
+    set color       item 4 data
+    set label       item 5 data
+    set label-color item 6 data
+  ]
   report idd
+end
 
+; --- Mouvement -----------------------------------------------------------------
+
+to-report bkbk [data]
+  ask turtle item 0 data [
+    repeat item 1 data [ bk 1 ]
+  ]
+  report 0
+end
+
+to-report rtrt [data]
+  ask turtle item 0 data [
+    rt item 1 data
+  ]
+  report 0
+end
+
+to-report ltlt [data]
+  ask turtle item 0 data [
+    lt item 1 data
+  ]
+  report 0
+end
+
+; --- Cap / orientation ---------------------------------------------------------
+
+to-report set_heading_turtle [data]
+  ask turtle item 0 data [
+    set heading item 1 data
+  ]
+  report 0
+end
+
+to-report get_heading_turtle [data]
+  report [heading] of turtle item 0 data
+end
+
+; --- Apparence -----------------------------------------------------------------
+
+to-report showturtle [data]
+  ask turtle item 0 data [
+    show-turtle
+  ]
+  report 0
+end
+
+to-report set_color_turtle [data]
+  ask turtle item 0 data [
+    set color item 1 data
+  ]
+  report 0
+end
+
+to-report get_color_turtle [data]
+  report [color] of turtle item 0 data
+end
+
+to-report set_size_turtle [data]
+  ask turtle item 0 data [
+    set size item 1 data
+  ]
+  report 0
+end
+
+to-report get_size_turtle [data]
+  report [size] of turtle item 0 data
+end
+
+; --- Crayon --------------------------------------------------------------------
+
+to-report pen_down_turtle [data]
+  ask turtle item 0 data [
+    pen-down
+  ]
+  report 0
+end
+
+to-report pen_up_turtle [data]
+  ask turtle item 0 data [
+    pen-up
+  ]
+  report 0
+end
+
+to-report stamp_turtle [data]
+  ask turtle item 0 data [
+    stamp
+  ]
+  report 0
+end
+
+; --- Output --------------------------------------------------------------------
+
+to-report outputprint [data]
+  output-print item 0 data
+  report 0
+end
+
+; --- Position ------------------------------------------------------------------
+
+to-report set_xcor_turtle [data]
+  ask turtle item 0 data [ set xcor item 1 data ]
+  report 0
+end
+
+to-report set_ycor_turtle [data]
+  ask turtle item 0 data [ set ycor item 1 data ]
+  report 0
+end
+
+to-report home_turtle [data]
+  ask turtle item 0 data [ home ]
+  report 0
+end
+
+to-report random_pos_turtle [data]
+  ask turtle item 0 data [ setxy random-xcor random-ycor ]
+  report 0
+end
+
+to-report can_move_turtle [data]
+  report [can-move? item 1 data] of turtle item 0 data
+end
+
+; --- Movement (new) ------------------------------------------------------------
+
+to-report wander_turtle [data]
+  ask turtle item 0 data [
+    set heading random 360
+    repeat item 1 data [ fd 1 ]
+  ]
+  report 0
+end
+
+; --- Heading (new) -------------------------------------------------------------
+
+to-report towards_point_turtle [data]
+  report [towards patch item 1 data item 2 data] of turtle item 0 data
+end
+
+to-report distance_point_turtle [data]
+  report [distance patch item 1 data item 2 data] of turtle item 0 data
+end
+
+; --- Appearance (new) ----------------------------------------------------------
+
+to-report get_shape_turtle [data]
+  report [shape] of turtle item 0 data
+end
+
+to-report set_label_turtle [data]
+  ask turtle item 0 data [ set label item 1 data ]
+  report 0
+end
+
+to-report get_label_turtle [data]
+  report [label] of turtle item 0 data
+end
+
+to-report set_label_color_turtle [data]
+  ask turtle item 0 data [ set label-color item 1 data ]
+  report 0
+end
+
+; --- Pen (new) -----------------------------------------------------------------
+
+to-report pen_erase_turtle [data]
+  ask turtle item 0 data [ pen-erase ]
+  report 0
+end
+
+to-report set_pen_color_turtle [data]
+  ask turtle item 0 data [ set color item 1 data ]
+  report 0
+end
+
+to-report set_pen_size_turtle [data]
+  ask turtle item 0 data [ set pen-size item 1 data ]
+  report 0
+end
+
+to-report stamp_erase_turtle [data]
+  ask turtle item 0 data [ stamp-erase ]
+  report 0
+end
+
+; --- Patch interaction ---------------------------------------------------------
+
+to-report patch_here_color_turtle [data]
+  let result 0
+  ask turtle item 0 data [ set result [pcolor] of patch-here ]
+  report result
+end
+
+to-report set_patch_here_color_turtle [data]
+  ask turtle item 0 data [ ask patch-here [ set pcolor item 1 data ] ]
+  report 0
+end
+
+to-report set_patch_color_r [data]
+  ask patch item 0 data item 1 data [ set pcolor item 2 data ]
+  report 0
+end
+
+to-report get_patch_color_r [data]
+  report [pcolor] of patch item 0 data item 1 data
+end
+
+; --- Neighborhood --------------------------------------------------------------
+
+to-report in_radius_turtle [data]
+  let result []
+  ask turtle item 0 data [
+    set result [who] of other turtles in-radius item 1 data
+  ]
+  report result
+end
+
+to-report turtles_here_turtle [data]
+  let result []
+  ask turtle item 0 data [
+    set result [who] of other turtles-here
+  ]
+  report result
 end
 @#$#@#$#@
 GRAPHICS-WINDOW

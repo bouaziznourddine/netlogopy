@@ -1,8 +1,6 @@
-
-
 # netlogopy
 
-`netlogopy` is a Python library that bridges NetLogo and Python, enabling advanced agent-based simulations by combining NetLogo’s simulation environment with Python’s powerful libraries for computation, optimization, and AI. `netlogopy` allows direct manipulation of NetLogo agents from Python.
+`netlogopy` is a Python library that bridges NetLogo and Python, enabling advanced agent-based simulations by combining NetLogo's simulation environment with Python's powerful libraries for computation, optimization, and AI. `netlogopy` allows direct manipulation of NetLogo agents from Python.
 
 ## License
 
@@ -11,90 +9,137 @@ This project is licensed under the terms of the [MIT License](./LICENSE).
 ## Developed by
 - **Nourddine Bouaziz** - [@Bouaziz19](https://github.com/Bouaziz19/netlogopy)
 
-### Requirements
-* NL4Py has been tested Python 3.6.2
+## Requirements
+
+* netlogopy works with Python >= 3.6
 * netlogopy works with NetLogo 6.0, 6.1, and 6.2
-* netlogopy requires JDK 1.8 
-<!-- * NL4Py requires [NL4Py](https://pypi.org/project/NL4Py) to be installed with your Python distrubtion -->
+* netlogopy requires JDK 8 or 11 (e.g., `openjdk=11`)
+* netlogopy requires [nl4py](https://pypi.org/project/nl4py)
+
 ## Installation
 
 ### Step 1: Install NetLogo
 Download and install NetLogo from the official site.
-[![NetLogo](https://ccl.northwestern.edu/netlogo/images/netlogo-title-wide-60.jpg)](https://ccl.northwestern.edu/netlogo/download.shtml)
 
+[![NetLogo](https://ccl.northwestern.edu/netlogo/images/netlogo-title-wide-60.jpg)](https://ccl.northwestern.edu/netlogo/download.shtml)
 
 ### Step 2: Install Conda
 If you do not already have Conda installed, download and install [Anaconda](https://www.anaconda.com/products/distribution) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 ### Step 3: Create the Conda Environment
-Use the provided environment.yml file to create a new Conda environment.
 
+Use the provided `environment.yml` file:
 ```bash
 conda env create -f environment.yml
+conda activate netlogopy-env
 ```
- file is provided below. For convenience, you can also download it directly from our GitHub repository.
-```bash
-name: netlogopy-env
-channels:
-  - defaults
-  - conda-forge
-dependencies:
-  - python=3.9
-  - openjdk=11
-  - pip
-  - pip:
-      - netlogopy
 
-```
-Or install `netlogopy`  and `openjdk` in conda env 
+Or install manually:
 ```bash
-conda install openjdk -y
+conda install openjdk=11 -y
 pip install netlogopy
-# pip install netlogopy --upgrade
 ```
-<!-- ### Step 2: Or install `netlogopy`
-```bash
-conda install openjdk -y
-pip install netlogopy
-# pip install netlogopy --upgrade
-``` -->
 
-###  Configure IDE (Optional)
-To set up your IDE (e.g., VS Code) for Command Line Interface (CLI) compatibility, check:
+To upgrade:
+```bash
+pip install netlogopy --upgrade
+```
+
+### Configure IDE (Optional)
+To set up VS Code for CLI compatibility:
 - [Set Default Terminal](https://www.w3schools.io/editor/vscode-change-default-terminal/)
 - [Change Default Terminal in VS Code](https://stackoverflow.com/questions/44435697/change-the-default-terminal-in-visual-studio-code)
+
+---
 
 ## Colors Reference
 ![Colors](https://ccl.northwestern.edu/netlogo/docs/images/colors.jpg)
 
-## Example Test
-The following example demonstrates a basic setup of `netlogopy`, initializing a NetLogo world and creating an agent named `car01` with simple movement in the simulation environment.
+---
 
+## API Reference
 
+### World functions
+
+| Function | Description |
+|----------|-------------|
+| `run_netlogo(netlogo_home, path_model="")` | Start NetLogo and open the model |
+| `resize_world(n, x0, xf, y0, yf)` | Resize the NetLogo world |
+| `set_background(n, image_path)` | Set a background image |
+| `run_command(n, command)` | Execute any NetLogo command |
+| `netlogoshow(n, word)` | Print a message in the NetLogo console |
+| `nl_output_print(n, word)` | Print a message in the NetLogo output window |
+| `clear_drawing(n)` | Erase all pen traces |
+| `clear_all_turtles(n)` | Remove all pyturtles from the world |
+| `get_ticks(n)` | Return the current tick count |
+| `do_tick(n)` | Advance the simulation clock by one tick |
+
+### Agent functions
+
+| Function | Description |
+|----------|-------------|
+| `count_pyturtles(n)` | Return the number of pyturtles in the world |
+| `get_all_pyturtles()` | Return the Python list of all pyturtles |
+| `getxyturtle(n, turtle)` | Return `[x, y]` of a turtle |
+| `distancebetween(n, t1, t2)` | Return the distance between two turtles |
+
+### `pyturtle` class — movement
+
+| Method | Description |
+|--------|-------------|
+| `fd(steps)` | Move forward |
+| `bk(steps)` | Move backward |
+| `rt(angle)` | Turn right (degrees) |
+| `lt(angle)` | Turn left (degrees) |
+| `setxy(x, y)` | Teleport to coordinates |
+| `move_to(target)` | Move to another turtle's position |
+| `face_to(target)` | Face towards another turtle |
+| `get_xcor()` | Return current X coordinate |
+| `get_ycor()` | Return current Y coordinate |
+| `distanceto(target)` | Return distance to another turtle |
+
+### `pyturtle` class — heading
+
+| Method | Description |
+|--------|-------------|
+| `set_heading(angle)` | Set heading (0=N, 90=E, 180=S, 270=W) |
+| `get_heading()` | Return current heading |
+
+### `pyturtle` class — appearance
+
+| Method | Description |
+|--------|-------------|
+| `set_shape(shape)` | Change shape (e.g. `"car"`, `"default"`) |
+| `set_color(color)` | Change color (NetLogo color code) |
+| `get_color()` | Return current color |
+| `set_size(size)` | Change size |
+| `get_size()` | Return current size |
+| `set_label(text)` | Set text label displayed on the turtle |
+| `hideturtle()` | Hide the turtle |
+| `showturtle()` | Make the turtle visible |
+| `dieturtle()` | Remove the turtle from the world |
+
+### `pyturtle` class — pen
+
+| Method | Description |
+|--------|-------------|
+| `pen_down()` | Activate pen (traces path) |
+| `pen_up()` | Deactivate pen |
+| `stamp()` | Stamp shape on patches |
+
+### `street` class (directed link)
 
 ```python
-import time
-from netlogopy.netlogopy import *
-
-if __name__ == "__main__":
-    netlogo_home="C:/Program Files/NetLogo 6.2.2"
-    n = run_netlogo(netlogo_home)
-    resize_world(n, 0, 60, 0, 60)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    
-    for i in range(10):
-        time.sleep(1)
-        print(f"***********  {i}  ********")  
-    n.close_model()
-
+street(n, fromm=car01, too=car02, label="street",
+       labelcolor=35, color=35, shape="default", thickness=0.5)
 ```
+
+---
 
 ## Usage Examples
 
 ### Example 1: `pyturtle`
-This example shows how to create an agent (a "turtle") in NetLogo using Python. Here, we create a `car`-shaped agent named `car01` and move it within the world.
-
-
+Create an agent and move it.
 
 ```python
 import time
@@ -105,16 +150,15 @@ if __name__ == "__main__":
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    
+
     for i in range(10):
         time.sleep(1)
-        print(f"***********  {i}  ********")  
+        car01.fd(1)
     n.close_model()
 ```
+
 ### Example 2: `set_background`
-In this example, we set a custom background image in the NetLogo world. The background can be any image file accessible from your system.
-
-
+Set a custom background image.
 
 ```python
 import time
@@ -124,19 +168,17 @@ if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
-    path_image = "path/to/image/nelogopy.png"
-    set_background(n, path_image)
+    set_background(n, "path/to/image.png")
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    
+
     for i in range(10):
         time.sleep(1)
-        print(f"***********  {i}  ********")  
+        car01.fd(1)
     n.close_model()
 ```
+
 ### Example 3: `street`
-This example demonstrates creating a link between two agents in the NetLogo world. Here, a `street` link connects two car agents (`car01` and `car02`).
-
-
+Create a link between two agents.
 
 ```python
 import time
@@ -147,18 +189,86 @@ if __name__ == "__main__":
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
-    street(n, fromm=car01, too=car02, label="street", labelcolor=35, color=35, shape="aa", thickness=0.5)
-    
+    car02 = pyturtle(n, x=5,  y=5,  shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
+    street(n, fromm=car01, too=car02, label="street", labelcolor=35, color=35, shape="default", thickness=0.5)
+
     for i in range(10):
         time.sleep(1)
-        print(f"***********  {i}  ********")  
+        car01.fd(1)
     n.close_model()
 ```
-### Example 4: `fd`
-In this example, the `fd` function is used to move the agent forward by one unit with each loop iteration.
 
+### Example 4: `fd` / `bk`
+Move forward and backward.
 
+```python
+import time
+from netlogopy.netlogopy import *
+
+if __name__ == "__main__":
+    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    n = run_netlogo(netlogo_home)
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=30, y=30, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+    for i in range(10):
+        time.sleep(0.5)
+        car01.fd(2)
+
+    for i in range(10):
+        time.sleep(0.5)
+        car01.bk(2)
+    n.close_model()
+```
+
+### Example 5: `rt` / `lt`
+Turn right and left — full circle.
+
+```python
+import time
+from netlogopy.netlogopy import *
+
+if __name__ == "__main__":
+    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    n = run_netlogo(netlogo_home)
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=30, y=30, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+    for i in range(36):       # full circle turning right
+        time.sleep(0.2)
+        car01.rt(10)
+        car01.fd(1)
+
+    for i in range(36):       # full circle turning left
+        time.sleep(0.2)
+        car01.lt(10)
+        car01.fd(1)
+    n.close_model()
+```
+
+### Example 6: `set_heading` / `get_heading`
+Set and read the direction of a turtle.
+
+```python
+import time
+from netlogopy.netlogopy import *
+
+if __name__ == "__main__":
+    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    n = run_netlogo(netlogo_home)
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=30, y=30, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+    for heading in [0, 90, 180, 270]:   # North, East, South, West
+        time.sleep(1)
+        car01.set_heading(heading)
+        print(f"Heading → {car01.get_heading()}")
+        car01.fd(5)
+    n.close_model()
+```
+
+### Example 7: `set_color` / `get_color`
+Change the turtle color dynamically.
 
 ```python
 import time
@@ -169,17 +279,18 @@ if __name__ == "__main__":
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    
-    for i in range(10):
+
+    # NetLogo colors: 15=red, 55=green, 95=blue, 35=orange, 125=violet
+    for c in [15, 55, 95, 35, 125]:
         time.sleep(1)
-        print(f"***********  {i}  ********")  
-        car01.fd(1)
+        car01.set_color(c)
+        print(f"Color → {car01.get_color()}")
+        car01.fd(3)
     n.close_model()
 ```
-### Example 5: `netlogoshow`
-Here, `netlogoshow` displays text above the agent during simulation. Each iteration, we update the displayed text.
 
-
+### Example 8: `set_size` / `get_size`
+Grow a turtle progressively.
 
 ```python
 import time
@@ -189,20 +300,18 @@ if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    
-    for i in range(10):
-        time.sleep(1)
-        word = f"{car01.id}  {i}"
-        netlogoshow(n, word)
-        print(word)
-        car01.fd(1)
+    car01 = pyturtle(n, x=30, y=10, shape="car", size_shape=2, color=15, name="car01", labelcolor=15)
+
+    for i in range(8):
+        time.sleep(0.8)
+        car01.set_size(2 + i)
+        print(f"Size → {car01.get_size()}")
+        car01.fd(2)
     n.close_model()
 ```
-### Example 6: `distanceto`
-This example shows how to calculate and print the distance between two agents in the world using the `distanceto` function.
 
-
+### Example 9: `hideturtle` / `showturtle`
+Hide then show a turtle.
 
 ```python
 import time
@@ -211,85 +320,21 @@ from netlogopy.netlogopy import *
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55)
-    
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=30, y=30, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
     for i in range(10):
         time.sleep(1)
-        distance = car01.distanceto(car02)
-        print(f"Distance to car02: {distance}")
-        car01.fd(1)
-    n.close_model()
-```
-### Example 7: `face_to`
-In this example, the `face_to` function directs `car01` to face towards `car02`.
-
-
-
-```python
-import time
-from netlogopy.netlogopy import *
-
-if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
-    n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55)
-    
-    for i in range(10):
-        if i == 5:
-            car01.face_to(car02)
-        time.sleep(1)
-        car01.fd(1)
-    n.close_model()
-```
-### Example 8: `move_to`
-The `move_to` function moves `car01` directly to `car02`'s position when the loop reaches a specified iteration.
-
-
-
-```python
-import time
-from netlogopy.netlogopy import *
-
-if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
-    n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55)
-    
-    for i in range(10):
-        if i == 5:
-            car01.move_to(car02)
-        time.sleep(1)
-        car01.fd(1)
-    n.close_model()
-```
-### Example 9: `hideturtle`
-This example demonstrates how to hide an agent in the simulation using `hideturtle`.
-
-
-
-```python
-import time
-from netlogopy.netlogopy import *
-
-if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
-    n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    
-    for i in range(10):
-        if i == 5:
+        if i == 3:
             car01.hideturtle()
-        time.sleep(1)
-        car01.fd(1)
+        if i == 7:
+            car01.showturtle()
+        car01.fd(2)
     n.close_model()
 ```
-### Example 10: `set_shape`
-In this example, `set_shape` changes the shape of `car01` to `default` at a specific iteration.
 
-
+### Example 10: `pen_down` / `pen_up` / `stamp`
+Draw a path and stamp shapes.
 
 ```python
 import time
@@ -298,19 +343,26 @@ from netlogopy.netlogopy import *
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    
-    for i in range(100):
-        if i == 5:
-            car01.set_shape('default')
-        time.sleep(1)
-        car01.fd(1)
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=10, y=10, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+    car01.pen_down()
+    for side in range(4):          # draw a square
+        for _ in range(10):
+            time.sleep(0.1)
+            car01.fd(1)
+        car01.rt(90)
+    car01.pen_up()
+
+    for pos in [(20, 20), (40, 20), (30, 40)]:
+        time.sleep(0.5)
+        car01.setxy(pos[0], pos[1])
+        car01.stamp()
     n.close_model()
 ```
-### Example 11: `getxyturtle`
-The `getxyturtle` function retrieves the current `x` and `y` coordinates of `car01`.
 
-
+### Example 11: `distanceto` / `face_to`
+Calculate distance and orient a turtle towards another.
 
 ```python
 import time
@@ -319,19 +371,21 @@ from netlogopy.netlogopy import *
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
+    resize_world(n, 0, 60, 0, 60)
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    
+    car02 = pyturtle(n, x=5,  y=5,  shape="car", size_shape=4, color=55)
+
     for i in range(10):
         time.sleep(1)
-        position = getxyturtle(n, car01)
-        print(f"Position: {position}")
+        car01.face_to(car02)
+        dist = car01.distanceto(car02)
+        print(f"Distance to car02: {dist}")
         car01.fd(1)
     n.close_model()
 ```
-### Example 12: `setxy`
-The `setxy` function sets the `x` and `y` coordinates of `car01` to new values during the simulation.
 
-
+### Example 12: `count_pyturtles` / `clear_all_turtles`
+Count and remove all agents.
 
 ```python
 import time
@@ -340,19 +394,20 @@ from netlogopy.netlogopy import *
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    
-    for i in range(100):
-        if i == 5:
-            car01.setxy(10, 10)
-        time.sleep(1)
-        car01.fd(1)
+    resize_world(n, 0, 60, 0, 60)
+
+    turtles = [pyturtle(n, x=i*10, y=20, shape="car", size_shape=3, color=15+i*10, name=f"car{i:02d}") for i in range(5)]
+    time.sleep(1)
+    print(f"Turtles: {count_pyturtles(n)}")
+
+    time.sleep(2)
+    clear_all_turtles(n)
+    print(f"After clear: {count_pyturtles(n)}")
     n.close_model()
 ```
-### Example 13: `distancebetween`
-This example calculates and prints the distance between `car01` and `car02`.
 
-
+### Example 13: `get_ticks` / `do_tick`
+Use NetLogo ticks as a simulation clock.
 
 ```python
 import time
@@ -361,72 +416,51 @@ from netlogopy.netlogopy import *
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
-    car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55)
-    
-    for i in range(10):
-        time.sleep(1)
-        distance = distancebetween(n, car01, car02)
-        print(f"Distance between car01 and car02: {distance}")
+    resize_world(n, 0, 60, 0, 60)
+    car01 = pyturtle(n, x=10, y=30, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+    for _ in range(20):
+        time.sleep(0.3)
+        do_tick(n)
+        tick = get_ticks(n)
         car01.fd(1)
+        car01.set_label(f"t={tick}")
+        print(f"Tick: {tick}  pos: ({car01.get_xcor():.1f}, {car01.get_ycor():.1f})")
     n.close_model()
 ```
 
-## Usage Examples
-
-### Integrating an Existing NetLogo Model with Python
-We have added a feature that allows you to use older NetLogo simulators and modify them with Python, creating a dual-layered simulator. The first layer represents the original simulator, while the second layer is created in Python using `netlogopy`. This approach enables further development on older simulators without having to rebuild them entirely in `netlogopy`.
-
-
+### Example 14: Integrating an Existing NetLogo Model
+Add Python-controlled agents on top of an existing NetLogo model.
 
 ```python
-import time, os, sys
-
-# Get the parent directory path
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-
-# Add the parent directory to the system path
-sys.path.insert(0, parent_dir)
+import time, os
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
     netlogo_home = "C:/Program Files/NetLogo 6.2.2"
     path_model = os.path.join(os.path.dirname(__file__), "Wolf Sheep Predation.nlogo")
     n = run_netlogo(netlogo_home, path_model)
-
-    # Resize world
     resize_world(n, 0, 70, 0, 55)
-
-    # Initialize the original NetLogo model
     run_command(n, "setup")
-    
-    # Add Python-controlled agents
+
     car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
-    car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
+    car02 = pyturtle(n, x=5,  y=5,  shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
     street(n, fromm=car01, too=car02, label="street", labelcolor=35, color=35, shape="default", thickness=0.5)
 
     for i in range(100):
-        run_command(n, "go")  # Run the NetLogo model step
+        run_command(n, "go")
         time.sleep(0.1)
-        print(f"***********  {i}  ********")
         car01.fd(1)
         if i % 20 == 0:
             car01.setxy(10, 10)
 ```
 
-# Download Examples
+---
 
-You can download this examples files from git [Examples](https://github.com/Bouaziz19/netlogopy/tree/main/Examples).
+## Download Examples
 
+You can download all example files from [GitHub Examples](https://github.com/Bouaziz19/netlogopy/tree/main/Examples).
 
 ---
 
-**Happy simulating!** If you have any questions, issues, or ideas for new features, please open an [issue](https://github.com/Bouaziz19) or submit a [pull request](https://github.com/Bouaziz19).
-
-## Final Steps
-
-1. **Save** this text as your new `README.md` in the root of the repository.  
-2. Ensure the [LICENSE](./LICENSE) file is in the same directory.  
-3. Commit and push both files to GitHub.  
-
-You will then have an updated README with a clear reference to the MIT License, while providing a quick overview of the project’s purpose.
+**Happy simulating!** If you have any questions, issues, or ideas for new features, please open an [issue](https://github.com/Bouaziz19/netlogopy/issues) or submit a [pull request](https://github.com/Bouaziz19/netlogopy).
