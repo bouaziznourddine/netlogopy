@@ -14,6 +14,10 @@ globals [
   list_link
 ]
 
+; >>> netlogopy procedures >>>
+; tools/sync_nlogo.py copies everything below into netlogopy.nlogo and into
+; the examples' base.nls: edit this file, then run that script.
+
 ; ===============================================================================
 ; POSITION
 ; ===============================================================================
@@ -61,12 +65,13 @@ end
 ; ===============================================================================
 
 to-report fdfd [data]
-  ask turtle item 0 data [ repeat item 1 data [ fd 1 ] ]
+  ; fd moves one step at a time and handles fractional and negative distances
+  ask turtle item 0 data [ fd item 1 data ]
   report 0
 end
 
 to-report bkbk [data]
-  ask turtle item 0 data [ repeat item 1 data [ bk 1 ] ]
+  ask turtle item 0 data [ bk item 1 data ]
   report 0
 end
 
@@ -83,7 +88,7 @@ end
 to-report wander_turtle [data]
   ask turtle item 0 data [
     set heading random 360
-    repeat item 1 data [ fd 1 ]
+    fd item 1 data
   ]
   report 0
 end
@@ -107,8 +112,8 @@ to-report get_heading_turtle [data]
 end
 
 to-report towards_point_turtle [data]
-  ; data = [turtle_id, target_x, target_y]
-  report [towards patch item 1 data item 2 data] of turtle item 0 data
+  ; data = [turtle_id, target_x, target_y]  (exact point, not the patch center)
+  report [towardsxy item 1 data item 2 data] of turtle item 0 data
 end
 
 ; ===============================================================================
@@ -120,8 +125,8 @@ to-report distanceto [data]
 end
 
 to-report distance_point_turtle [data]
-  ; data = [turtle_id, target_x, target_y]
-  report [distance patch item 1 data item 2 data] of turtle item 0 data
+  ; data = [turtle_id, target_x, target_y]  (exact point, not the patch center)
+  report [distancexy item 1 data item 2 data] of turtle item 0 data
 end
 
 ; ===============================================================================
@@ -316,6 +321,31 @@ to-report create-pyturtle-xyid [data]
     set label-color item 6 data
   ]
   report idd
+end
+
+to-report create-pyturtles-xyid [data]
+  ; data = [ [[x y] ...]  shape  size  color  [label ...]  label-color ]
+  ; creates one pyturtle per [x y] pair and reports the list of their who numbers
+  let ids []
+  let coords item 0 data
+  let labels item 4 data
+  let i 0
+  repeat length coords [
+    let xy  item i coords
+    let lbl item i labels
+    create-ordered-pyturtles 1 [
+      set xcor        item 0 xy
+      set ycor        item 1 xy
+      set shape       item 1 data
+      set size        item 2 data
+      set color       item 3 data
+      set label       lbl
+      set label-color item 5 data
+      set ids lput who ids
+    ]
+    set i i + 1
+  ]
+  report ids
 end
 
 to-report create-street-ft [data]

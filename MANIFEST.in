@@ -1,5 +1,10 @@
 include README.md
 include LICENSE
+include CHANGELOG.md
+include CITATION.cff
 include environment.yml
-recursive-include netlogopy *.nlogo *.nls
-recursive-include Examples *.py
+recursive-include netlogopy *.nlogo *.nls py.typed
+recursive-include Examples *.py *.nlogo *.nls
+recursive-include tests *.py
+recursive-include tools *.py
+global-exclude __pycache__ *.py[cod]

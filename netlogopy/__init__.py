@@ -1,10 +1,29 @@
+"""netlogopy -- bridge NetLogo and Python for agent-based simulations."""
+
+__version__ = "0.2.0"
+__author__  = "Nourddine Bouaziz"
+__email__   = "nourddine.bouaziz.dz@gmail.com"
+
 from .netlogopy import (
+    # ── Errors and warnings ─────────────────────────────────────────────────────
+    NetLogoError,
+    NetLogoNotFoundError,
+    NetLogoWarning,
+
     # ── Initialisation ──────────────────────────────────────────────────────────
+    find_netlogo_home,
+    is_netlogo_home,
     run_netlogo,
     run_netlogo_base,
     run_netlogo_model,
+    close_netlogo,
+    netlogo_session,
     reset_base_file,
     create_ntlg_file,
+    NetLogoApp,
+    HeadlessNetLogo,
+    BASE_MODEL_PATH,
+    BASE_NLS_PATH,
 
     # ── Utilities ───────────────────────────────────────────────────────────────
     list2nllist,
@@ -13,6 +32,8 @@ from .netlogopy import (
 
     # ── World ───────────────────────────────────────────────────────────────────
     run_command,
+    run_commands,
+    report_value,
     resize_world,
     resize_world_direct,
     set_background,
@@ -48,6 +69,8 @@ from .netlogopy import (
     distancebetween,
     count_pyturtles,
     get_all_pyturtles,
+    get_all_xy,
+    create_pyturtles,
 
     # ── Global lists ────────────────────────────────────────────────────────────
     list_pyturtle,
@@ -82,8 +105,7 @@ from .netlogopy import (
     turtle,
     pyturtle,
     street,
+    Turtle,
+    PyTurtle,
+    Street,
 )
-
-__version__ = "0.1.0"
-__author__  = "Nourddine Bouaziz"
-__email__   = "nourddine.bouaziz.dz@gmail.com"
