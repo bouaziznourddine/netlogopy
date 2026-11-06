@@ -96,7 +96,8 @@ def test_world_functions(n, tmp_path):
     assert (legacy.get_world_width(n), legacy.get_world_height(n)) == (21, 11)
     assert (legacy.get_min_pxcor(n), legacy.get_max_pxcor(n),
             legacy.get_min_pycor(n), legacy.get_max_pycor(n)) == (0, 20, 0, 10)
-    assert 0 <= legacy.get_random_xcor(n) <= 20.5 and 0 <= legacy.get_random_ycor(n) <= 10.5
+    for _ in range(20):            # random-xcor: from min-pxcor - 0.5 to max-pxcor + 0.5
+        assert -0.5 <= legacy.get_random_xcor(n) < 20.5 and -0.5 <= legacy.get_random_ycor(n) < 10.5
     legacy.set_patch_color(n, 3, 4, 15)
     assert legacy.get_patch_color(n, 3, 4) == 15
     legacy.set_background(n, os.path.join(EXAMPLES, "netlogopy.png"))
