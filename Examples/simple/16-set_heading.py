@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         time.sleep(1)
         car01.set_heading(h)
         current = car01.get_heading()
-        print(f"Heading set to {h} → NetLogo reports: {current}")
+        print(f"Heading set to {h} -> NetLogo reports: {current}")
         car01.fd(5)
 
     n.close_model()

@@ -1,9 +1,9 @@
-import time
+import time, os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__" :
-    # Change netlogo_home
-    netlogo_home="C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n=run_netlogo(netlogo_home)
     # Resize world
     resize_world(n,0,60,0,60)

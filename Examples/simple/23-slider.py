@@ -5,7 +5,7 @@ Read and write NetLogo Slider values from Python.
 A Slider is backed by a global variable in NetLogo.
 
 How to add a Slider to your .nlogo model:
-  Right-click on the Interface tab → Slider
+  Right-click on the Interface tab -> Slider
   Give it a variable name, e.g. "speed"
 """
 import time, os, sys
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
 

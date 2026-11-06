@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         world_h    = get_monitor(n, "world-height")
         ticks_now  = get_monitor(n, "ticks")
 
-        print(f"[tick {i:2d}]  agents={total}  world={world_w}×{world_h}  ticks={ticks_now}")
+        print(f"[tick {i:2d}]  agents={total}  world={world_w}x{world_h}  ticks={ticks_now}")
 
         do_tick(n)
         for car in cars:

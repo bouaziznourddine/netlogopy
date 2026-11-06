@@ -5,7 +5,7 @@ Read and write NetLogo Switch values from Python.
 A Switch is backed by a boolean global variable (true / false).
 
 How to add a Switch to your .nlogo model:
-  Right-click on Interface → Switch
+  Right-click on Interface -> Switch
   Variable name, e.g. "show-labels?"
 """
 import time, os, sys
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
 

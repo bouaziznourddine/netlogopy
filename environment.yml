@@ -1,11 +1,12 @@
+# conda env create -f environment.yml && conda activate netlogopy-env
 name: netlogopy-env
 channels:
-  - defaults
   - conda-forge
 dependencies:
-  - python=3.9
-  - openjdk=11
+  - python=3.11
+  # Java 17 is only needed with NetLogo 6.2 and older, which bundle Java 8
+  # (too old for JPype); NetLogo 6.3+ brings its own Java 17.
+  - openjdk=17
   - pip
   - pip:
-      - netlogopy
-
+      - netlogopy[data]

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Tooling
+.pytest_cache/
+.venv/
+venv/
+
+# NetLogo autosaves and example outputs
+.*.tmp.nlogo
+.*.tmp.nlogox
+netlogopy-output/

@@ -1,356 +1,21 @@
-; extensions removed - not used by any procedure in this model
-breed [pyturtles pyturtle]
-directed-link-breed [streets street]
-patches-own [free]
-streets-own [  ]
-pyturtles-own [ ]
-globals[
- lengthenv
- widthenv
- list_ag
-  list_shape
-  list_shape_size
-  list_shape_color
-  list_link
-  last-created-id
-]
+; netlogopy demo model: agents are created and driven from Python.
+; The pyturtles breed is used by netlogopy's pyturtle class and the
+; streets link breed by its street class (any model gets both by
+; including base.nls).
+
+breed [ pyturtles pyturtle ]
+directed-link-breed [ streets street ]
+
 to setup
-  file-close-all
   clear-all
-  reset-ticks
   resize-world 0 60 0 60
-  ask patches [set free 1]
-end
-to test
-  let d [list xcor ycor] of turtle 0
-  show d
-end
-to-report getxyturtle [data]
-  let d [list xcor ycor] of turtle item 0  data
-  report d
+  reset-ticks
 end
 
-to-report netlogoshow [data]
-  show item 0  data
-  report 0
-end
-to-report resize_world [data]
-  resize-world item 0  data item 1  data item 2  data item 3  data
-  report 0
-end
-
-to-report set_background [data]
-  import-drawing item 0  data
-  report 0
-end
-to-report moveto [data]
-  ask turtle item 0  data [
-    move-to turtle item 1  data
-    ]
-  report 0
-end
-
-to-report hideturtle [data]
-  ask turtle item 0  data [
-    hide-turtle
-    ]
-  report 0
-end
-to-report dieturtle [data]
-  ask turtle item 0  data [
-    die
-    ]
-  report 0
-end
-to-report set_shape [data]
-  ask turtle item 0  data [
-    set shape  item 1  data
-    ]
-  report 0
-end
-to-report turtle_setxy [data]
-  ask turtle item 0  data [
-    setxy   item 1  data item 2  data
-    ]
-  report 0
-end
-
-to-report faceto [data]
-   ask turtle item 0  data [
-    face turtle item 1  data
-    ]
-
-  report 0
-end
-to-report distanceto [data]
-  let d 0
-
-  set d [  distance turtle item 1  data] of turtle item 0  data
-  report d
-end
-to-report fdfd [data]
-  ask turtle item 0  data [
-    repeat item 1  data [ fd 1]
-    ]
-
-  report 0
-end
 to go
-
-end
-to-report create-street-ft [data]
-  let idd 0
-    ask turtle item 0  data [
-      create-street-to turtle item 1  data[
-        set label item 2  data
-        set label-color item 3  data
-        set idd  (word item 0  data "_" item 1  data)
-        set color item 4  data
-        set shape  item 5  data
-        set thickness  item 6  data
-        ] ]
-
-   report idd
-
-end
-to-report create-pyturtle-xyid [data]
-  let idd 0
-  create-ordered-pyturtles 1 [
-    set xcor        item 0 data
-    set ycor        item 1 data
-    set idd         who
-    set shape       item 2 data
-    set size        item 3 data
-    set color       item 4 data
-    set label       item 5 data
-    set label-color item 6 data
-  ]
-  report idd
-end
-
-; --- Mouvement -----------------------------------------------------------------
-
-to-report bkbk [data]
-  ask turtle item 0 data [
-    repeat item 1 data [ bk 1 ]
-  ]
-  report 0
-end
-
-to-report rtrt [data]
-  ask turtle item 0 data [
-    rt item 1 data
-  ]
-  report 0
-end
-
-to-report ltlt [data]
-  ask turtle item 0 data [
-    lt item 1 data
-  ]
-  report 0
-end
-
-; --- Cap / orientation ---------------------------------------------------------
-
-to-report set_heading_turtle [data]
-  ask turtle item 0 data [
-    set heading item 1 data
-  ]
-  report 0
-end
-
-to-report get_heading_turtle [data]
-  report [heading] of turtle item 0 data
-end
-
-; --- Apparence -----------------------------------------------------------------
-
-to-report showturtle [data]
-  ask turtle item 0 data [
-    show-turtle
-  ]
-  report 0
-end
-
-to-report set_color_turtle [data]
-  ask turtle item 0 data [
-    set color item 1 data
-  ]
-  report 0
-end
-
-to-report get_color_turtle [data]
-  report [color] of turtle item 0 data
-end
-
-to-report set_size_turtle [data]
-  ask turtle item 0 data [
-    set size item 1 data
-  ]
-  report 0
-end
-
-to-report get_size_turtle [data]
-  report [size] of turtle item 0 data
-end
-
-; --- Crayon --------------------------------------------------------------------
-
-to-report pen_down_turtle [data]
-  ask turtle item 0 data [
-    pen-down
-  ]
-  report 0
-end
-
-to-report pen_up_turtle [data]
-  ask turtle item 0 data [
-    pen-up
-  ]
-  report 0
-end
-
-to-report stamp_turtle [data]
-  ask turtle item 0 data [
-    stamp
-  ]
-  report 0
-end
-
-; --- Output --------------------------------------------------------------------
-
-to-report outputprint [data]
-  output-print item 0 data
-  report 0
-end
-
-; --- Position ------------------------------------------------------------------
-
-to-report set_xcor_turtle [data]
-  ask turtle item 0 data [ set xcor item 1 data ]
-  report 0
-end
-
-to-report set_ycor_turtle [data]
-  ask turtle item 0 data [ set ycor item 1 data ]
-  report 0
-end
-
-to-report home_turtle [data]
-  ask turtle item 0 data [ home ]
-  report 0
-end
-
-to-report random_pos_turtle [data]
-  ask turtle item 0 data [ setxy random-xcor random-ycor ]
-  report 0
-end
-
-to-report can_move_turtle [data]
-  report [can-move? item 1 data] of turtle item 0 data
-end
-
-; --- Movement (new) ------------------------------------------------------------
-
-to-report wander_turtle [data]
-  ask turtle item 0 data [
-    set heading random 360
-    repeat item 1 data [ fd 1 ]
-  ]
-  report 0
-end
-
-; --- Heading (new) -------------------------------------------------------------
-
-to-report towards_point_turtle [data]
-  report [towards patch item 1 data item 2 data] of turtle item 0 data
-end
-
-to-report distance_point_turtle [data]
-  report [distance patch item 1 data item 2 data] of turtle item 0 data
-end
-
-; --- Appearance (new) ----------------------------------------------------------
-
-to-report get_shape_turtle [data]
-  report [shape] of turtle item 0 data
-end
-
-to-report set_label_turtle [data]
-  ask turtle item 0 data [ set label item 1 data ]
-  report 0
-end
-
-to-report get_label_turtle [data]
-  report [label] of turtle item 0 data
-end
-
-to-report set_label_color_turtle [data]
-  ask turtle item 0 data [ set label-color item 1 data ]
-  report 0
-end
-
-; --- Pen (new) -----------------------------------------------------------------
-
-to-report pen_erase_turtle [data]
-  ask turtle item 0 data [ pen-erase ]
-  report 0
-end
-
-to-report set_pen_color_turtle [data]
-  ask turtle item 0 data [ set color item 1 data ]
-  report 0
-end
-
-to-report set_pen_size_turtle [data]
-  ask turtle item 0 data [ set pen-size item 1 data ]
-  report 0
-end
-
-to-report stamp_erase_turtle [data]
-  ask turtle item 0 data [ stamp-erase ]
-  report 0
-end
-
-; --- Patch interaction ---------------------------------------------------------
-
-to-report patch_here_color_turtle [data]
-  let result 0
-  ask turtle item 0 data [ set result [pcolor] of patch-here ]
-  report result
-end
-
-to-report set_patch_here_color_turtle [data]
-  ask turtle item 0 data [ ask patch-here [ set pcolor item 1 data ] ]
-  report 0
-end
-
-to-report set_patch_color_r [data]
-  ask patch item 0 data item 1 data [ set pcolor item 2 data ]
-  report 0
-end
-
-to-report get_patch_color_r [data]
-  report [pcolor] of patch item 0 data item 1 data
-end
-
-; --- Neighborhood --------------------------------------------------------------
-
-to-report in_radius_turtle [data]
-  let result []
-  ask turtle item 0 data [
-    set result [who] of other turtles in-radius item 1 data
-  ]
-  report result
-end
-
-to-report turtles_here_turtle [data]
-  let result []
-  ask turtle item 0 data [
-    set result [who] of other turtles-here
-  ]
-  report result
+  ; netlogopy scripts usually move the agents from Python:
+  ; put your own model logic here.
+  tick
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -381,11 +46,11 @@ ticks
 30.0
 
 BUTTON
-69
-12
-133
-45
-Setup
+10
+10
+125
+43
+setup
 setup
 NIL
 1
@@ -398,13 +63,13 @@ NIL
 1
 
 BUTTON
-86
-83
-149
-116
-NIL
-Go
-NIL
+135
+10
+250
+43
+go
+go
+T
 1
 T
 OBSERVER
@@ -414,22 +79,99 @@ NIL
 NIL
 1
 
-BUTTON
-105
-189
-168
-222
-test
-test
-NIL
+SLIDER
+10
+50
+250
+83
+speed
+speed
+0
+10
+1.0
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
 1
+NIL
+HORIZONTAL
+
+SWITCH
+10
+88
+250
+121
+show-label
+show-label
+0
+1
+-1000
+
+CHOOSER
+10
+126
+250
+171
+scenario
+scenario
+"default" "custom"
+0
+
+INPUTBOX
+10
+176
+250
+236
+user-text
+netlogopy
+1
+0
+String
+
+MONITOR
+10
+241
+125
+286
+pyturtles
+count pyturtles
+0
+1
+11
+
+MONITOR
+135
+241
+250
+286
+ticks
+ticks
+0
+1
+11
+
+PLOT
+10
+291
+250
+451
+My Plot
+time
+value
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+OUTPUT
+10
+456
+250
+590
+11
 
 @#$#@#$#@
 ## WHAT IS IT?

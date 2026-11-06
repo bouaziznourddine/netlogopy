@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use netlogopy in your research, please cite the paper below."
+title: netlogopy
+version: 1.0.0
+type: software
+license: MIT
+repository-code: "https://github.com/Bouaziz19/netlogopy"
+authors:
+  - family-names: Bouaziz
+    given-names: Nourddine
+preferred-citation:
+  type: conference-paper
+  title: "Netlogopy: Unlocking Advanced Simulation and Integration for NetLogo Using Python"
+  authors:
+    - family-names: Bouaziz
+      given-names: Nourddine
+    - family-names: Bettayeb
+      given-names: Belgacem
+    - family-names: Sahnoun
+      given-names: "M'Hammed"
+    - family-names: Yassine
+      given-names: Adnan
+  collection-title: "Simulation Workshop 2025 (SW25)"
+  conference:
+    name: "Simulation Workshop 2025 (SW25)"
+    city: Exeter
+    country: GB
+  year: 2025
+  month: 3
+  doi: "10.36819/SW25.019"
+  url: "https://hal.science/hal-04982069"

@@ -1,5 +1,5 @@
-include README.md
-include LICENSE
-include environment.yml
-recursive-include netlogopy *.nlogo *.nls
-recursive-include Examples *.py
+include README.md LICENSE CHANGELOG.md CITATION.cff environment.yml
+recursive-include netlogopy *.nlogo *.nlogox *.nls
+recursive-include Examples *.py *.nlogo *.nls *.png
+recursive-include tests *.py
+recursive-include tools *.py

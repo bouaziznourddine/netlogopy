@@ -1,37 +1,60 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlogopy"
-version = "0.1.0"
-description = "Bridge NetLogo and Python for advanced agent-based simulations"
+version = "1.0.0"
+description = "Drive NetLogo models from Python: agents, patches, links, plots, experiments"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
     { name = "Nourddine Bouaziz", email = "nourddine.bouaziz.dz@gmail.com" }
 ]
-requires-python = ">=3.6"
-dependencies = ["nl4py"]
+requires-python = ">=3.8"
+dependencies = ["JPype1>=1.5"]
 keywords = ["python", "netlogo", "simulation", "multi-agent", "agent-based modeling", "ABM"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+[project.optional-dependencies]
+data = ["numpy", "pandas"]
+test = ["pytest"]
+
 [project.urls]
 Homepage = "https://github.com/Bouaziz19/netlogopy"
 "Bug Tracker" = "https://github.com/Bouaziz19/netlogopy/issues"
 "Source Code" = "https://github.com/Bouaziz19/netlogopy"
+Paper = "https://hal.science/hal-04982069"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["netlogopy*"]
 
 [tool.setuptools.package-data]
-netlogopy = ["*.nlogo", "*.nls"]
+netlogopy = ["*.nlogo", "*.nlogox", "*.nls"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The JVM handles access violations internally on Windows; pytest's
+# faulthandler would print them as crashes.
+addopts = "-p no:faulthandler"
+markers = [
+    "netlogo: needs NetLogo and a Java runtime (skipped when they are missing)",
+    "examples: runs the example scripts headless (slow)",
+]

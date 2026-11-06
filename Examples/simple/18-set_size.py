@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from netlogopy.netlogopy import *
 
 if __name__ == "__main__":
-    netlogo_home = "C:/Program Files/NetLogo 6.2.2"
+    netlogo_home = None   # newest NetLogo installed; or e.g. "C:/Program Files/NetLogo 6.2.2"
     n = run_netlogo(netlogo_home)
     resize_world(n, 0, 60, 0, 60)
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
         new_size = 2 + i          # grows from 2 to 9
         car01.set_size(new_size)
         current = car01.get_size()
-        print(f"Size set to {new_size} → NetLogo reports: {current}")
+        print(f"Size set to {new_size} -> NetLogo reports: {current}")
         car01.fd(2)
 
     n.close_model()
