@@ -14,7 +14,7 @@ def test_all_names_exist():
 def test_star_import_keeps_the_names_it_exported_before():
     namespace = {}
     exec("from netlogopy.netlogopy import *", namespace)
-    for name in ("run_netlogo", "pyturtle", "street", "list_pyturtle", "copy", "nl4py",
+    for name in ("run_netlogo", "pyturtle", "street", "list_pyturtle", "copy",
                  "os", "shutil", "Any", "List", "Optional"):
         assert name in namespace, name
     assert "re" not in namespace and "_void" not in namespace
@@ -22,7 +22,7 @@ def test_star_import_keeps_the_names_it_exported_before():
 
 def test_package_exports_the_public_functions():
     public = [name for name in nlp.__all__ if name not in
-              ("copy", "nl4py", "os", "shutil", "Any", "List", "Optional")]
+              ("copy", "os", "shutil", "Any", "List", "Optional")]
     missing = [name for name in public if not hasattr(netlogopy, name)]
     assert not missing
 

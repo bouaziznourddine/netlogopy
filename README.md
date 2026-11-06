@@ -8,11 +8,12 @@
 
 ## What's new in 0.2
 
-- **NetLogo is found automatically**: `run_netlogo()` works without `netlogo_home` (it reads the `NETLOGO_HOME` environment variable, then looks in the usual install folders). If the `java` command is missing, the Java bundled with NetLogo is used.
+- **No more nl4py**: netlogopy talks to NetLogo through its own bridge built on [JPype](https://pypi.org/project/JPype1/) (Java runs inside Python). No Java server to start, errors are reported, and texts keep their accents.
+- **NetLogo is found automatically**: `run_netlogo()` works without `netlogo_home` (it reads the `NETLOGO_HOME` environment variable, then looks in the usual install folders), and uses the Java bundled with NetLogo.
 - **Headless mode** for fast batch runs (experiments, optimization, replications): `run_netlogo(headless=True)` or `with netlogo_session(headless=True) as n:`.
 - **Batch helpers**: `create_pyturtles()`, `get_all_xy()`, `run_commands()`, `report_value()`.
-- **Clear errors**: a NetLogo error raises `NetLogoError` with NetLogo's message (and a hint when `base.nls` is missing) instead of a cryptic `ValueError`; a failed action emits a `NetLogoWarning` instead of failing silently.
-- **Bug fixes**: `fd(0.5)` and `bk(0.5)` now move; `can_move()` can return `False`; `in_radius()` and `turtles_here()` work with several neighbours; `set_pen_color()` no longer changes the turtle color; `towards_point()` and `distance_to_point()` use the exact point; texts with quotes or backslashes (Windows paths) no longer break NetLogo; accented labels survive on Windows; `import netlogopy` works with setuptools 82+.
+- **Clear errors**: a NetLogo error raises `NetLogoError` with NetLogo's message (and a hint when `base.nls` is missing) instead of a cryptic `ValueError` or nothing at all; a failed action emits a `NetLogoWarning`.
+- **Bug fixes**: `fd(0.5)` and `bk(0.5)` now move; `can_move()` can return `False`; `in_radius()` and `turtles_here()` work with several neighbours; `set_pen_color()` no longer changes the turtle color; `towards_point()` and `distance_to_point()` use the exact point; texts with quotes or backslashes (Windows paths) no longer break NetLogo.
 - **Compatible**: every function, class and parameter of 0.1.x still works the same way.
 
 Details in [CHANGELOG.md](CHANGELOG.md).
@@ -26,10 +27,11 @@ This project is licensed under the terms of the [MIT License](./LICENSE).
 
 ## Requirements
 
-* netlogopy works with Python >= 3.6
-* netlogopy works with NetLogo 6.0, 6.1, and 6.2
-* netlogopy requires Java: a JDK 8 or 11 on the PATH (e.g., `openjdk=11`), otherwise the Java bundled with NetLogo is used
-* netlogopy requires [nl4py](https://pypi.org/project/nl4py) (installed automatically)
+* netlogopy works with Python >= 3.6 (64-bit, like NetLogo)
+* netlogopy works with NetLogo 6 (developed with NetLogo 6.2.2)
+* Java: the Java bundled with NetLogo is used; otherwise `JAVA_HOME`
+* netlogopy requires [JPype1](https://pypi.org/project/JPype1/) (installed automatically)
+* The NetLogo window (GUI mode) is not available on macOS: use `headless=True` there
 
 ## Installation
 
@@ -64,7 +66,7 @@ pip install netlogopy --upgrade
 ```bash
 python -m netlogopy
 ```
-It shows the nl4py version, the NetLogo folder and the Java that netlogopy will use, and what is missing.
+It shows the JPype version, the NetLogo folder and the Java that netlogopy will use, and what is missing.
 
 ### Configure IDE (Optional)
 To set up VS Code for CLI compatibility:
@@ -177,7 +179,7 @@ s.set_color(15)      # also: set_label, set_label_color, set_thickness, set_shap
 
 | Name | When |
 |------|------|
-| `NetLogoError` | NetLogo answered with an error instead of a value (e.g. the turtle is dead) |
+| `NetLogoError` | NetLogo answered with an error (e.g. the turtle is dead, or a command does not compile) |
 | `NetLogoWarning` | An action failed in NetLogo; make it an error with `warnings.simplefilter("error", NetLogoWarning)` |
 | `NetLogoNotFoundError` | NetLogo was not found: pass `netlogo_home=...` or set `NETLOGO_HOME` |
 
@@ -540,7 +542,9 @@ If `base.nls` is missing, netlogopy raises a `NetLogoError` that says so.
 
 ## Troubleshooting
 
-* `python -m netlogopy` shows what netlogopy finds (nl4py, NetLogo, Java) and what is missing.
+* `python -m netlogopy` shows what netlogopy finds (JPype, NetLogo, Java) and what is missing.
+* Java runs inside the Python process: one NetLogo version per Python program (restart Python to change it). In GUI mode, the program ends when you close the NetLogo window.
+* To use another Java: set `NETLOGOPY_JVM` to its `jvm.dll` / `libjvm.so`. Extra Java options (e.g. memory): `NETLOGOPY_JVM_OPTIONS="-Xmx4g"`.
 * `NetLogoNotFoundError`: pass `netlogo_home="..."` to `run_netlogo` or set the `NETLOGO_HOME` environment variable.
 * To stop on the first NetLogo problem instead of a warning: `warnings.simplefilter("error", NetLogoWarning)`.
 
@@ -572,7 +576,7 @@ pip install -e .[test]
 pytest
 ```
 
-The tests do not need NetLogo or Java. The NetLogo procedures live in `netlogopy/base.nls`: after editing it, run `python tools/sync_nlogo.py` to update `netlogopy/netlogopy.nlogo` and the copies in `Examples/`.
+The tests do not need NetLogo. With `javac` installed, one test also drives a fake NetLogo written in Java (`tests/fake_netlogo`) through JPype. The NetLogo procedures live in `netlogopy/base.nls`: after editing it, run `python tools/sync_nlogo.py` to update `netlogopy/netlogopy.nlogo` and the copies in `Examples/`.
 
 ## Download Examples
 

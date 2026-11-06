@@ -10,21 +10,19 @@ Python). The built-in model ``netlogopy.nlogo`` contains a copy of them; to use
 your own model, copy ``base.nls`` next to it with :func:`reset_base_file` and add
 ``__includes ["base.nls"]`` at the top of its Code tab.
 """
-import codecs
 import contextlib
 import copy
 import glob
-import importlib
 import math
 import numbers
 import os
 import platform
 import re
 import shutil
-import sys
-import types
 import warnings
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+
+from . import _bridge
 
 __all__ = [
     # Errors and warnings
@@ -60,7 +58,7 @@ __all__ = [
     # Classes
     "turtle", "pyturtle", "street", "Turtle", "PyTurtle", "Street",
     # Names that `from netlogopy.netlogopy import *` exported before 0.2
-    "copy", "nl4py", "os", "shutil", "Any", "List", "Optional",
+    "copy", "os", "shutil", "Any", "List", "Optional",
 ]
 
 list_pyturtle: List[Any] = []
@@ -89,66 +87,15 @@ class NetLogoWarning(UserWarning):
     """
 
 
-# ─── nl4py import ──────────────────────────────────────────────────────────────
-
-def _resource_filename(package: str, resource: str) -> str:
-    """Minimal replacement for ``pkg_resources.resource_filename`` (used by nl4py)."""
-    module = sys.modules.get(package) or importlib.import_module(package)
-    base = os.path.dirname(os.path.abspath(module.__file__))
-    return os.path.join(base, *resource.split("/"))
-
-
-def _import_nl4py() -> Any:
-    """Import nl4py, even when setuptools no longer ships ``pkg_resources``.
-
-    nl4py 0.9 imports ``pkg_resources``, which setuptools removed in version 82,
-    but it only uses ``resource_filename``. A tiny stand-in is provided while
-    nl4py is imported and removed right after, so other libraries are unaffected.
-    """
-    shim = None
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # pkg_resources deprecation noise
-        try:
-            import pkg_resources  # noqa: F401
-        except ImportError:
-            shim = types.ModuleType("pkg_resources")
-            shim.resource_filename = _resource_filename
-            sys.modules["pkg_resources"] = shim
-        try:
-            module = importlib.import_module("nl4py")
-        finally:
-            if shim is not None and sys.modules.get("pkg_resources") is shim:
-                del sys.modules["pkg_resources"]
-    return module
-
-
-try:
-    nl4py = _import_nl4py()
-    _NL4PY_IMPORT_ERROR: Optional[BaseException] = None
-except Exception as _error:  # pragma: no cover - depends on the environment
-    nl4py = None
-    _NL4PY_IMPORT_ERROR = _error
-
-
-def _require_nl4py() -> Any:
-    if nl4py is None:
-        raise ImportError(
-            "netlogopy needs the 'nl4py' package to talk to NetLogo "
-            "(importing it failed: {!r}). Install it with:  pip install nl4py"
-            .format(_NL4PY_IMPORT_ERROR)
-        ) from _NL4PY_IMPORT_ERROR
-    return nl4py
-
-
-# ─── Finding NetLogo and Java ──────────────────────────────────────────────────
+# ─── Finding NetLogo ───────────────────────────────────────────────────────────
 
 def _jar_dir(home: str) -> str:
-    """Folder that holds netlogo-<version>.jar (same rule as nl4py)."""
-    return os.path.join(home, "Java" if platform.system() == "Darwin" else "app")
+    """Folder that holds netlogo-<version>.jar."""
+    return _bridge.jar_dir(home)
 
 
 def is_netlogo_home(path: Optional[str]) -> bool:
-    """Return True if `path` is a NetLogo installation folder that nl4py can use."""
+    """Return True if `path` is a NetLogo installation folder."""
     if not path:
         return False
     jar_dir = _jar_dir(os.path.expanduser(str(path)))
@@ -193,8 +140,8 @@ def find_netlogo_home() -> Optional[str]:
     """Locate a NetLogo installation; return its folder, or None.
 
     The NETLOGO_HOME environment variable wins; otherwise the usual install
-    folders are searched. NetLogo 6.x is preferred (nl4py supports it), and the
-    most recent version is chosen when several are installed.
+    folders are searched. NetLogo 6.x is preferred, and the most recent version
+    is chosen when several are installed.
     """
     env_home = os.environ.get("NETLOGO_HOME")
     if env_home and is_netlogo_home(env_home):
@@ -229,84 +176,41 @@ def _resolve_netlogo_home(netlogo_home: Optional[str]) -> str:
     return home
 
 
-def _ensure_java(netlogo_home: str) -> None:
-    """nl4py starts the command 'java': if it is not on PATH, use the JAVA_HOME
-    or the Java runtime bundled with NetLogo."""
-    if shutil.which("java"):
-        return
-    folders = []
-    if os.environ.get("JAVA_HOME"):
-        folders.append(os.path.join(os.environ["JAVA_HOME"], "bin"))
-    for relative in ("runtime/bin", "runtime/Contents/Home/bin", "lib/runtime/bin", "jre/bin"):
-        folders.append(os.path.join(netlogo_home, *relative.split("/")))
-    for folder in folders:
-        if shutil.which("java", path=folder):
-            os.environ["PATH"] = folder + os.pathsep + os.environ.get("PATH", "")
-            return
-    raise FileNotFoundError(
-        "Java was not found. nl4py needs the 'java' command: install a JDK "
-        "(e.g. 'conda install openjdk=11') or add Java's bin folder to PATH.")
-
-
 # ─── NetLogo instances ─────────────────────────────────────────────────────────
 
 class _NetLogoInstance:
-    """Wrapper around an nl4py object (GUI app or headless workspace).
-
-    It keeps the nl4py interface (``open_model``, ``command``, ``report``...)
-    and makes ``report`` return the raw text of the result, using the JVM's
-    character encoding so that accented labels survive the round trip.
-    Unknown attributes are forwarded to the wrapped nl4py object.
+    """A running NetLogo (window or headless) with the interface netlogopy needs:
+    ``open_model``, ``command``, ``report`` (raw text of the result) and
+    ``close_model``. Other attributes are forwarded to the underlying object.
     """
 
     headless = False
 
     def __init__(self, target: Any):
         self._target = target
-        self._charset: Optional[str] = None
-
-    @property
-    def nl4py_object(self) -> Any:
-        """The underlying nl4py object."""
-        return self._target
 
     def open_model(self, path: str) -> None:
-        self._target.open_model(path)
+        try:
+            self._target.open_model(path)
+        except _bridge.BridgeError as error:
+            raise NetLogoError("NetLogo could not open '{}': {}".format(path, error)) from None
 
     def command(self, command: str) -> None:
-        self._target.command(command)
+        try:
+            self._target.command(command)
+        except _bridge.BridgeError as error:
+            raise NetLogoError("NetLogo could not run `{}`: {}".format(command, error)) from None
 
     def report(self, reporter: str) -> str:
-        controller = self._controller()
-        if controller is None:
-            return str(self._target.report(reporter))
-        charset = self._jvm_charset()
-        result = controller.report(reporter.encode(charset, "replace"))
-        if isinstance(result, (bytes, bytearray)):
-            return bytes(result).decode(charset, "replace")
-        return str(result)
+        return str(self._target.report(reporter))
 
     def close_model(self) -> None:
-        self._target.close_model()
-
-    def _controller(self) -> Any:
-        return None
-
-    def _jvm_charset(self) -> str:
-        """Charset Java uses to turn bytes into text (cp1252 with Java < 18 on Windows)."""
-        if self._charset is None:
-            charset = "utf-8"
-            try:
-                name = str(self._target.gateway.jvm.java.nio.charset.Charset.defaultCharset().name())
-                codecs.lookup(name)
-                charset = name
-            except Exception:
-                pass
-            self._charset = charset
-        return self._charset
+        close = getattr(self._target, "close_model", None)
+        if close is not None:
+            close()
 
     def __getattr__(self, name: str) -> Any:
-        if name.startswith("__") or name in ("_target", "_charset"):
+        if name.startswith("__") or name == "_target":
             raise AttributeError(name)
         return getattr(self._target, name)
 
@@ -317,19 +221,11 @@ class _NetLogoInstance:
 class NetLogoApp(_NetLogoInstance):
     """The NetLogo application with its window (returned by run_netlogo())."""
 
-    def _controller(self) -> Any:
-        return getattr(self._target, "app", None)
-
 
 class HeadlessNetLogo(_NetLogoInstance):
-    """A NetLogo workspace without window, for fast batch runs (run_netlogo(headless=True))."""
+    """NetLogo without window, for fast batch runs (run_netlogo(headless=True))."""
 
     headless = True
-
-    def _controller(self) -> Any:
-        # nl4py 0.9 converts every headless result with float(), which fails
-        # for lists and text: read the raw result from the controller instead.
-        return getattr(self._target, "hwc", None)
 
     def export_view(self, filename: str) -> None:
         """Save the current view as a PNG image."""
@@ -337,20 +233,15 @@ class HeadlessNetLogo(_NetLogoInstance):
 
     def dispose(self) -> None:
         """Free the workspace in Java. It cannot be used afterwards."""
-        try:
-            _require_nl4py().delete_headless_workspace(self._target)
-        except Exception:
-            self._target.deleteWorkspace()
+        self._target.dispose()
 
 
 def _start_netlogo(netlogo_home: Optional[str], headless: bool) -> Any:
     home = _resolve_netlogo_home(netlogo_home)
-    nl = _require_nl4py()
-    _ensure_java(home)
-    nl.initialize(home)
+    _bridge.start_jvm(home)
     if headless:
-        return HeadlessNetLogo(nl.create_headless_workspace())
-    return NetLogoApp(nl.netlogo_app())
+        return HeadlessNetLogo(_bridge.HeadlessWorkspace())
+    return NetLogoApp(_bridge.GuiApp())
 
 
 def _resolve_model(path_model: Optional[str]) -> str:
@@ -401,7 +292,7 @@ def close_netlogo(n: Any) -> None:
     """Release a NetLogo instance created by run_netlogo().
 
     The Python agents of `n` are forgotten and a headless workspace is freed.
-    The NetLogo window (GUI) stays open until Python exits.
+    The NetLogo window (GUI) stays open: close it to end the Python program.
     """
     _forget_instance(n)
     if isinstance(n, HeadlessNetLogo):
@@ -550,9 +441,9 @@ def _parse_atom(token: str) -> Any:
 
 
 def _parse_nl_value(result: Any) -> Any:
-    """Turn the text nl4py returns into Python: float, bool, str or (nested) list.
+    """Turn the text of a NetLogo result into Python: float, bool, str or (nested) list.
 
-    nl4py gives Java's text of a NetLogo value: numbers as '20.0', booleans as
+    The bridge gives Java's text of a NetLogo value: numbers as '20.0', booleans as
     'true', lists as '[20.0, 5.0]'. NetLogo's own '[20 5]' format is understood too.
     """
     if not isinstance(result, str):

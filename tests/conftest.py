@@ -1,6 +1,6 @@
 """Shared test helpers: a fake NetLogo that records what netlogopy sends to it.
 
-These tests do not need NetLogo, Java or a working nl4py.
+These tests do not need NetLogo or Java.
 """
 import re
 import sys
@@ -15,7 +15,7 @@ import netlogopy.netlogopy as nlp  # noqa: E402
 
 
 class FakeNetLogo:
-    """Stands in for an nl4py NetLogo object.
+    """Stands in for the Java side of a NetLogo instance.
 
     `responses` maps a reporter prefix to the text NetLogo would return
     (or to a function of the reporter). Unknown reporters return "0.0",
@@ -32,7 +32,7 @@ class FakeNetLogo:
         self.model = None
         self.closed = False
 
-    # nl4py interface -----------------------------------------------------------
+    # bridge interface -----------------------------------------------------------
     def open_model(self, path):
         self.model = path
 
@@ -62,7 +62,7 @@ class FakeNetLogo:
             return "[{}]".format(", ".join("{}.0".format(who) for who in ids))
         if reporter == "[ (list who xcor ycor) ] of pyturtles":
             mine = [t for t in nlp.list_pyturtle
-                    if getattr(t.n, "nl4py_object", t.n) is self]  # t.n may be a wrapper
+                    if getattr(t.n, "_target", t.n) is self]  # t.n may be a wrapper
             rows = ["[{}.0, 20.0, 20.0]".format(t.id) for t in mine]
             return "[{}]".format(", ".join(rows))
         if reporter.startswith("create-street-ft"):

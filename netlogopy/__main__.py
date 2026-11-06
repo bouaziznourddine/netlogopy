@@ -1,50 +1,46 @@
-"""``python -m netlogopy``: check that netlogopy can find nl4py, NetLogo and Java."""
+"""``python -m netlogopy``: check that netlogopy can find JPype, NetLogo and Java."""
 import platform
-import shutil
 import sys
 
 from . import __version__
+from . import _bridge
 from . import netlogopy as _nlp
 
 
-def _nl4py_version() -> str:
+def _jpype_version():
     try:
-        from importlib.metadata import version  # novm (Python 3.8+, guarded)
-        return version("nl4py")
-    except Exception:
-        return "installed"
+        import jpype
+        return jpype.__version__
+    except ImportError:
+        return None
 
 
 def main() -> int:
     ok = True
     print("netlogopy {}".format(__version__))
-    print("Python    {} ({})".format(sys.version.split()[0], platform.system()))
+    print("Python    {} ({}, {})".format(sys.version.split()[0], platform.system(),
+                                         platform.architecture()[0]))
 
-    if _nlp.nl4py is None:
+    jpype_version = _jpype_version()
+    if jpype_version is None:
         ok = False
-        print("nl4py     NOT available: {!r}".format(_nlp._NL4PY_IMPORT_ERROR))
+        print("JPype     NOT installed: pip install JPype1")
     else:
-        print("nl4py     {}".format(_nl4py_version()))
+        print("JPype     {}".format(jpype_version))
 
     home = _nlp.find_netlogo_home()
     if home is None:
         ok = False
         print("NetLogo   NOT found: set NETLOGO_HOME or pass netlogo_home=... to run_netlogo()")
-    else:
-        print("NetLogo   {}".format(home))
+        return 1
+    print("NetLogo   {}".format(home))
 
-    java = shutil.which("java")
-    if java is None and home is not None:
-        try:
-            _nlp._ensure_java(home)
-            java = shutil.which("java")
-        except FileNotFoundError:
-            java = None
-    if java is None:
+    jvm = _bridge.jvm_path(home) if jpype_version else None
+    if jvm is None:
         ok = False
-        print("Java      NOT found: install a JDK (e.g. 'conda install openjdk=11') or add it to PATH")
+        print("Java      NOT found: install a JDK, set JAVA_HOME, or set NETLOGOPY_JVM")
     else:
-        print("Java      {}".format(java))
+        print("Java      {}".format(jvm))
 
     print("Ready." if ok else "Not ready: fix the lines marked NOT above.")
     return 0 if ok else 1

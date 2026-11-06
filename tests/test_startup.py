@@ -1,7 +1,4 @@
-"""Finding NetLogo/Java and starting GUI or headless instances (nl4py is faked)."""
-import os
-import types
-
+"""Finding NetLogo and starting GUI or headless instances (the Java bridge is faked)."""
 import pytest
 
 import netlogopy.netlogopy as nlp
@@ -63,127 +60,85 @@ def test_explicit_wrong_folder(tmp_path, linux):
 
 # ── Java ──────────────────────────────────────────────────────────────────────
 
-def test_java_from_netlogo_runtime(tmp_path, monkeypatch):
-    home = tmp_path / "NetLogo 6.2.2"
-    java = home / "runtime" / "bin" / ("java.exe" if os.name == "nt" else "java")
-    java.parent.mkdir(parents=True)
-    java.write_text("#!/bin/sh\n")
-    java.chmod(0o755)
-    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
-    monkeypatch.delenv("JAVA_HOME", raising=False)
-    nlp._ensure_java(str(home))
-    assert os.environ["PATH"].split(os.pathsep)[0] == str(java.parent)
+def test_jvm_bundled_with_netlogo_is_preferred(tmp_path, linux, monkeypatch):
+    home = make_home(tmp_path)
+    jvm = home / "runtime" / "lib" / "server" / "libjvm.so"
+    jvm.parent.mkdir(parents=True)
+    jvm.write_bytes(b"")
+    monkeypatch.delenv("NETLOGOPY_JVM", raising=False)
+    assert nlp._bridge.jvm_path(str(home)) == str(jvm)
+    monkeypatch.setenv("NETLOGOPY_JVM", "/my/jvm.so")
+    assert nlp._bridge.jvm_path(str(home)) == "/my/jvm.so"
 
 
-def test_java_missing(tmp_path, monkeypatch):
-    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
-    monkeypatch.delenv("JAVA_HOME", raising=False)
-    with pytest.raises(FileNotFoundError, match="Java"):
-        nlp._ensure_java(str(tmp_path))
-
-
-# ── Starting NetLogo with a fake nl4py ────────────────────────────────────────
-
-class FakeController:
-    """Mimics nl4py's Java controllers: report() takes and returns bytes."""
-
-    def __init__(self, charset):
-        self.charset = charset
-        self.received = []
-
-    def report(self, data):
-        text = data.decode(self.charset)
-        self.received.append(text)
-        if text.startswith("get_label_turtle"):
-            return "Vitesse élevée".encode(self.charset)
-        if text.startswith("getxyturtle"):
-            return b"[1.0, 2.0]"
-        return b"0.0"
-
-
-def fake_gateway(charset_name):
-    charset = types.SimpleNamespace(name=lambda: charset_name)
-    java_charset = types.SimpleNamespace(defaultCharset=lambda: charset)
-    jvm = types.SimpleNamespace(java=types.SimpleNamespace(
-        nio=types.SimpleNamespace(charset=types.SimpleNamespace(Charset=java_charset))))
-    return types.SimpleNamespace(jvm=jvm)
-
-
-class FakeGUI(FakeNetLogo):
-    def __init__(self, charset="windows-1252"):
-        super().__init__()
-        self.app = FakeController(charset)
-        self.gateway = fake_gateway(charset)
-
+# ── Starting NetLogo with a fake bridge ───────────────────────────────────────
 
 class FakeHeadless(FakeNetLogo):
     def __init__(self):
         super().__init__()
-        self.hwc = FakeController("UTF-8")
-        self.gateway = fake_gateway("UTF-8")
-        self.deleted = False
+        self.disposed = False
 
-    def deleteWorkspace(self):
-        self.deleted = True
+    def dispose(self):
+        self.disposed = True
+
+
+class FakeGUI(FakeNetLogo):
+    pass
 
 
 @pytest.fixture
-def fake_nl4py(tmp_path, linux, monkeypatch):
-    calls = []
-    module = types.SimpleNamespace(
-        initialize=lambda home: calls.append(("initialize", home)),
-        netlogo_app=lambda: FakeGUI(),
-        create_headless_workspace=lambda: FakeHeadless(),
-        delete_headless_workspace=lambda ws: (calls.append(("delete", ws)), ws.deleteWorkspace()),
-        calls=calls,
-    )
-    monkeypatch.setattr(nlp, "nl4py", module)
-    monkeypatch.setattr(nlp, "_ensure_java", lambda home: None)
+def fake_bridge(tmp_path, linux, monkeypatch):
+    started = []
+    monkeypatch.setattr(nlp._bridge, "start_jvm", started.append)
+    monkeypatch.setattr(nlp._bridge, "HeadlessWorkspace", FakeHeadless)
+    monkeypatch.setattr(nlp._bridge, "GuiApp", FakeGUI)
     monkeypatch.setenv("NETLOGO_HOME", str(make_home(tmp_path)))
-    return module
+    return started
 
 
-def test_run_netlogo_gui(fake_nl4py, tmp_path):
+def test_run_netlogo_gui(fake_bridge, tmp_path):
     n = run_netlogo()
     assert isinstance(n, NetLogoApp) and not n.headless
-    assert fake_nl4py.calls == [("initialize", str(tmp_path / "NetLogo 6.2.2"))]
-    assert n.nl4py_object.model == nlp.BASE_MODEL_PATH
-    assert n.nl4py_object.commands == ["setup"]
-    n.close_model()  # forwarded to nl4py
-    assert n.nl4py_object.closed
+    assert fake_bridge == [str(tmp_path / "NetLogo 6.2.2")]
+    assert n._target.model == nlp.BASE_MODEL_PATH
+    assert n._target.commands == ["setup"]
+    n.close_model()  # kept for old scripts
+    assert n._target.closed
 
 
-def test_gui_report_uses_the_java_charset(fake_nl4py):
+def test_command_error_raises(fake_bridge):
     n = run_netlogo()
-    car = pyturtle(n)
-    car.set_label("Vitesse élevée")
-    assert n.app.received[-1] == 'set_label_turtle [0 "Vitesse élevée"]'
-    assert car.get_label() == "Vitesse élevée"
+
+    def fail(command):
+        raise nlp._bridge.BridgeError("Nothing named FOO has been defined.")
+    n._target.command = fail
+    with pytest.raises(nlp.NetLogoError, match="FOO"):
+        nlp.run_command(n, "foo")
 
 
-def test_run_netlogo_headless_reads_raw_results(fake_nl4py):
+def test_run_netlogo_headless(fake_bridge):
     n = run_netlogo(headless=True)
     assert isinstance(n, HeadlessNetLogo) and n.headless
     car = pyturtle(n)
-    assert car.get_xy() == (1.0, 2.0)  # nl4py's own headless report() would fail here
+    assert car.get_xy() == (20.0, 20.0)
 
 
-def test_netlogo_session_frees_the_workspace(fake_nl4py):
+def test_netlogo_session_frees_the_workspace(fake_bridge):
     with netlogo_session(headless=True) as n:
         pyturtle(n)
-        workspace = n.nl4py_object
-    assert workspace.deleted and nlp.list_pyturtle == []
+        workspace = n._target
+    assert workspace.disposed and nlp.list_pyturtle == []
 
 
-def test_run_netlogo_model_does_not_run_setup(fake_nl4py, tmp_path):
+def test_run_netlogo_model_does_not_run_setup(fake_bridge, tmp_path):
     model = tmp_path / "My Model.nlogo"
     model.write_text("")
     n = run_netlogo_model(path_model=str(model))
-    assert n.nl4py_object.model == str(model)
-    assert n.nl4py_object.commands == []
+    assert n._target.model == str(model)
+    assert n._target.commands == []
 
 
-def test_missing_model_fails_before_starting_java(fake_nl4py, tmp_path):
+def test_missing_model_fails_before_starting_java(fake_bridge, tmp_path):
     with pytest.raises(FileNotFoundError, match="model not found"):
         run_netlogo(path_model=str(tmp_path / "nope.nlogo"))
-    assert fake_nl4py.calls == []
+    assert fake_bridge == []

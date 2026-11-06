@@ -13,7 +13,7 @@ authors = [
     { name = "Nourddine Bouaziz", email = "nourddine.bouaziz.dz@gmail.com" }
 ]
 requires-python = ">=3.6"
-dependencies = ["nl4py"]
+dependencies = ["JPype1>=1.0"]
 keywords = ["python", "netlogo", "simulation", "multi-agent", "agent-based modeling", "ABM"]
 classifiers = [
     "Development Status :: 3 - Alpha",

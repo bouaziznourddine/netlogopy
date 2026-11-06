@@ -5,6 +5,6 @@ include CITATION.cff
 include environment.yml
 recursive-include netlogopy *.nlogo *.nls py.typed
 recursive-include Examples *.py *.nlogo *.nls
-recursive-include tests *.py
+recursive-include tests *.py *.java
 recursive-include tools *.py
 global-exclude __pycache__ *.py[cod]
