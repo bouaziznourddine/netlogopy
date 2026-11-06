@@ -273,6 +273,13 @@ def test_observer_perspective(nl):
     assert nl.report("subject") is None
 
 
+def test_installation_check(capsys):
+    from netlogopy.__main__ import main
+    assert main([]) == 0
+    output = capsys.readouterr().out
+    assert "Ready." in output and "NOT" not in output
+
+
 def test_information(nl):
     assert nl.breeds() == {"turtles": ["pyturtles"], "links": ["streets"]}
     assert "car" in nl.shapes() and "default" in nl.link_shapes()

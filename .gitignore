@@ -2,15 +2,27 @@
 __pycache__/
 *.py[cod]
 
-# Build / packaging
+# Build and packaging
 build/
 dist/
 *.egg-info/
 
-# Tooling
+# Tests and tools
 .pytest_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Environments
 .venv/
 venv/
+env/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # NetLogo autosaves and example outputs
 .*.tmp.nlogo

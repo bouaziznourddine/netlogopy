@@ -77,6 +77,12 @@ usual places (`C:/Program Files/NetLogo *`, `/Applications/NetLogo *`,
 `java_home`, NetLogo's own runtime, `JAVA_HOME`, the active conda
 environment, then other NetLogo installations.
 
+Check what netlogopy finds, and that NetLogo starts:
+
+```bash
+python -m netlogopy
+```
+
 ## Quick start
 
 ```python
@@ -411,7 +417,20 @@ If you use netlogopy in your research, please cite:
 > *Netlogopy: Unlocking Advanced Simulation and Integration for NetLogo Using
 > Python.* Simulation Workshop 2025 (SW25), March 2025, Exeter, United Kingdom.
 > [doi:10.36819/SW25.019](https://doi.org/10.36819/SW25.019) —
-> [hal-04982069](https://hal.science/hal-04982069) ([PDF](docs/netlogopy-SW25-paper.pdf))
+> [hal-04982069](https://hal.science/hal-04982069) ([PDF](paper/netlogopy-SW25-paper.pdf))
+
+```bibtex
+@inproceedings{bouaziz2025netlogopy,
+  title     = {Netlogopy: Unlocking Advanced Simulation and Integration for {NetLogo} Using {Python}},
+  author    = {Bouaziz, Nourddine and Bettayeb, Belgacem and Sahnoun, M'hammed and Yassine, Adnan},
+  booktitle = {Proceedings of the Operational Research Society Simulation Workshop 2025 ({SW25})},
+  address   = {Exeter, United Kingdom},
+  year      = {2025},
+  doi       = {10.36819/SW25.019}
+}
+```
+
+More references: [paper/references.bib](paper/references.bib).
 
 ## License
 
@@ -419,7 +438,7 @@ If you use netlogopy in your research, please cite:
 
 ## Developed by
 
-- **Nourddine Bouaziz** - [@Bouaziz19](https://github.com/Bouaziz19/netlogopy)
+- **Nourddine Bouaziz** - [@bouaziznourddine](https://github.com/bouaziznourddine/netlogopy)
 
 Questions, issues and ideas are welcome on the
-[issue tracker](https://github.com/Bouaziz19/netlogopy/issues).
+[issue tracker](https://github.com/bouaziznourddine/netlogopy/issues).

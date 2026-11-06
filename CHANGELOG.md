@@ -42,7 +42,10 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   (run window scripts without a window, e.g. in CI).
 - The bundled model has demo widgets: `speed` slider, `show-label` switch,
   `scenario` chooser, `user-text` input, monitors, `My Plot` and an output area.
-- Tests against a real NetLogo, and seven new examples (`Examples/advanced`).
+- `python -m netlogopy` checks the installation: JPype, NetLogo, Java, and a
+  headless start of NetLogo.
+- Tests against a real NetLogo, a GitHub Actions workflow, type information
+  (`py.typed`), and seven new examples (`Examples/advanced`).
 
 ### Changed
 
@@ -53,6 +56,11 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `extensions` and `globals` declarations clashed with the models including it.
 - `run_netlogo()` finds NetLogo by itself; `netlogo_home` is optional.
 - Python 3.8+ (was 3.6+); the only dependency is JPype1.
+- Packaging: `pyproject.toml` is the only source of metadata, with an SPDX
+  license and the version read from `netlogopy.__version__`; the project URLs
+  point to `github.com/bouaziznourddine/netlogopy`.
+- Repository: `.gitignore` and `.gitattributes`; the SW25 paper and the BibTeX
+  references are in `paper/`.
 
 ### Fixed
 
@@ -60,8 +68,12 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `fd` / `bk` / `wander` ignored fractional and negative distances.
 - `towards_point` and `distance_to_point` used the patch centre instead of the point.
 - `can_move` could report True for "false"; `getxyturtle` used `eval`.
-- Strings containing quotes or backslashes broke the generated NetLogo code.
+- Strings containing quotes or backslashes broke the generated NetLogo code;
+  accents and non-Latin characters are now kept on every platform.
+- `in_radius()` and `turtles_here()` failed as soon as there were two
+  neighbours or more.
 - `pyturtle(fields=...)` shared one default dict between all turtles.
+- `__version__` said 0.1.0 while the package was 0.1.6.
 - Examples 23, 24, 26 and 27 referred to widgets or breeds that did not exist.
 - The build backend in pyproject.toml did not exist, so the package did not build.
 

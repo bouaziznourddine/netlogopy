@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlogopy"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Drive NetLogo models from Python: agents, patches, links, plots, experiments"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Nourddine Bouaziz", email = "nourddine.bouaziz.dz@gmail.com" }
 ]
@@ -18,7 +19,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.8",
@@ -30,24 +30,28 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
 
 [project.optional-dependencies]
 data = ["numpy", "pandas"]
-test = ["pytest"]
+test = ["pytest>=6"]
 
 [project.urls]
-Homepage = "https://github.com/Bouaziz19/netlogopy"
-"Bug Tracker" = "https://github.com/Bouaziz19/netlogopy/issues"
-"Source Code" = "https://github.com/Bouaziz19/netlogopy"
-Paper = "https://hal.science/hal-04982069"
+Homepage = "https://github.com/bouaziznourddine/netlogopy"
+"Bug Tracker" = "https://github.com/bouaziznourddine/netlogopy/issues"
+"Source Code" = "https://github.com/bouaziznourddine/netlogopy"
+Changelog = "https://github.com/bouaziznourddine/netlogopy/blob/main/CHANGELOG.md"
+Paper = "https://doi.org/10.36819/SW25.019"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["netlogopy*"]
+[tool.setuptools]
+packages = ["netlogopy"]
+
+[tool.setuptools.dynamic]
+version = { attr = "netlogopy.__version__" }
 
 [tool.setuptools.package-data]
-netlogopy = ["*.nlogo", "*.nlogox", "*.nls"]
+netlogopy = ["*.nlogo", "*.nlogox", "*.nls", "py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
