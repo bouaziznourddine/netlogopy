@@ -132,7 +132,7 @@ class _Workspace:
         return str(result)
 
     def close_model(self) -> None:
-        """Kept for compatibility with nl4py scripts; does nothing."""
+        """Kept for older scripts that call n.close_model(); does nothing."""
 
 
 class HeadlessWorkspace(_Workspace):

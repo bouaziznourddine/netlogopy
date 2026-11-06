@@ -8,7 +8,7 @@
 - NetLogo errors in commands now raise `NetLogoError` (nl4py printed them in the Java console and continued).
 - Texts are exchanged as Java strings: accents and non-Latin characters are kept on every platform.
 - The GUI is started once per Python process; `run_netlogo()` can be called again to open another model in the same window. GUI mode is not available on macOS (use `headless=True`).
-- `n.close_model()` still exists (it does nothing, as with nl4py). Scripts that used nl4py directly (`Examples/complexe/test`) need nl4py installed separately.
+- `n.close_model()` still exists (it does nothing, as with nl4py). The scripts of `Examples/complexe/test` now use netlogopy (headless) instead of nl4py.
 
 Existing code keeps working: every function, class and parameter of 0.1.x is still there and behaves the same, except for the bug fixes below.
 
