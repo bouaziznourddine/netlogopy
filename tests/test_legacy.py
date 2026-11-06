@@ -41,6 +41,17 @@ def test_pyturtle_and_street(n):
     assert legacy.count_pyturtles(n) == 2
 
 
+def test_camelcase_names_and_fields(n):
+    assert legacy.PyTurtle is legacy.pyturtle and legacy.Street is legacy.street
+    machine = legacy.PyTurtle(n, x=10, y=30, shape="machine", fields={"busy": False})
+    assert machine.busy is False and machine.fields == {"busy": False}
+    machine.fields["busy"] = True                      # the dict is the attributes
+    machine.queue = 3
+    assert machine.busy is True and machine.fields["queue"] == 3
+    other = legacy.PyTurtle(n)
+    assert other.fields == {} and machine.get_shape() == "machine"
+
+
 def test_turtle_methods(n):
     car = legacy.pyturtle(n, x=30, y=30)
     other = legacy.pyturtle(n, x=31, y=30)

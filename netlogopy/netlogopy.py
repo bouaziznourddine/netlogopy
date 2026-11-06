@@ -40,7 +40,7 @@ __all__ = [
     "set_current_plot", "set_plot_pen", "create_plot_pen", "plot_add", "plot_xy", "clear_plot",
     "set_plot_pen_color", "set_plot_pen_mode", "auto_plot_on", "auto_plot_off",
     "set_plot_x_range", "set_plot_y_range",
-    "turtle", "pyturtle", "street",
+    "turtle", "pyturtle", "street", "PyTurtle", "Street",
 ]
 
 #: Every ``pyturtle`` created (removed again by dieturtle / clear_all*).
@@ -471,7 +471,8 @@ class pyturtle(turtle):
     color      : NetLogo color
     name       : label text
     labelcolor : label color
-    fields     : extra Python attributes stored on the object
+    fields     : extra Python attributes stored on the object, readable as
+                 attributes (``car.busy``) or through ``car.fields["busy"]``
     """
 
     def __init__(self, n: NetLogo, x: float = 0, y: float = 0, shape: str = "car",
@@ -484,6 +485,11 @@ class pyturtle(turtle):
         if fields:
             self.__dict__.update(fields)
         list_pyturtle.append(self)
+
+    @property
+    def fields(self) -> dict:
+        """The extra Python attributes, as a live dict: ``car.fields["busy"]`` is ``car.busy``."""
+        return self.__dict__
 
 
 class street(Link):
@@ -507,3 +513,8 @@ class street(Link):
     @property
     def n(self) -> NetLogo:
         return self.nl
+
+
+#: CamelCase names of the 0.x classes.
+PyTurtle = pyturtle
+Street = street

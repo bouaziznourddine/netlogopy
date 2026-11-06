@@ -102,6 +102,8 @@ from .netlogopy import (
     turtle,
     pyturtle,
     street,
+    PyTurtle,
+    Street,
 )
 
 __all__ = [
@@ -127,7 +129,7 @@ __all__ = [
     "set_current_plot", "set_plot_pen", "create_plot_pen", "plot_add", "plot_xy", "clear_plot",
     "set_plot_pen_color", "set_plot_pen_mode", "auto_plot_on", "auto_plot_off",
     "set_plot_x_range", "set_plot_y_range",
-    "turtle", "pyturtle", "street",
+    "turtle", "pyturtle", "street", "PyTurtle", "Street",
 ]
 
 __version__ = "1.0.0"
