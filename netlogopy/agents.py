@@ -369,6 +369,67 @@ class Turtle(Agent):
         target = other.to_netlogo()
         return self._link_query(f"link-with {target}", f"{{singular}}-with {target}", breed)
 
+    def create_links_with(self, others: Sequence["Turtle"], breed: Optional[str] = None,
+                          **variables: Any) -> List["Link"]:
+        """Undirected links to several turtles."""
+        return [self.create_link_with(other, breed, **variables) for other in others]
+
+    def create_links_to(self, others: Sequence["Turtle"], breed: Optional[str] = None,
+                        **variables: Any) -> List["Link"]:
+        return [self.create_link_to(other, breed, **variables) for other in others]
+
+    def create_links_from(self, others: Sequence["Turtle"], breed: Optional[str] = None,
+                          **variables: Any) -> List["Link"]:
+        return [self.create_link_from(other, breed, **variables) for other in others]
+
+    def is_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
+        """True if a link joins this turtle and ``other`` (``link-neighbor?``)."""
+        target = other.to_netlogo()
+        return bool(self._link_query(f"link-neighbor? {target}", f"{{singular}}-neighbor? {target}", breed))
+
+    def is_in_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
+        target = other.to_netlogo()
+        return bool(self._link_query(f"in-link-neighbor? {target}", f"in-{{singular}}-neighbor? {target}", breed))
+
+    def is_out_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
+        target = other.to_netlogo()
+        return bool(self._link_query(f"out-link-neighbor? {target}", f"out-{{singular}}-neighbor? {target}", breed))
+
+    def in_link_from(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
+        """The link coming from ``other`` to this turtle (None if there is none)."""
+        target = other.to_netlogo()
+        return self._link_query(f"in-link-from {target}", f"in-{{singular}}-from {target}", breed)
+
+    def out_link_to(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
+        target = other.to_netlogo()
+        return self._link_query(f"out-link-to {target}", f"out-{{singular}}-to {target}", breed)
+
+    # gradients
+    def uphill(self, patch_variable: str) -> "Turtle":
+        """Move to the neighbouring patch (8 neighbours) with the highest value."""
+        self.nl.command(f"ask {self.to_netlogo()} [ uphill {variable_name(patch_variable)} ]")
+        return self
+
+    def uphill4(self, patch_variable: str) -> "Turtle":
+        self.nl.command(f"ask {self.to_netlogo()} [ uphill4 {variable_name(patch_variable)} ]")
+        return self
+
+    def downhill(self, patch_variable: str) -> "Turtle":
+        """Move to the neighbouring patch (8 neighbours) with the lowest value."""
+        self.nl.command(f"ask {self.to_netlogo()} [ downhill {variable_name(patch_variable)} ]")
+        return self
+
+    def downhill4(self, patch_variable: str) -> "Turtle":
+        self.nl.command(f"ask {self.to_netlogo()} [ downhill4 {variable_name(patch_variable)} ]")
+        return self
+
+    def turtles_at(self, dx: float, dy: float, breed: str = "turtles") -> List["Turtle"]:
+        """Turtles on the patch at (dx, dy) from this turtle."""
+        return self.of(f"sort {breed}-at {_num(dx)} {_num(dy)}")
+
+    def patch_at_heading_and_distance(self, heading: float, distance: float) -> Optional["Patch"]:
+        return self.of(f"patch-at-heading-and-distance {_num(heading)} {_num(distance)}")
+
     # observer perspective
     def follow(self) -> "Turtle":
         """Make the observer follow this turtle."""
@@ -428,6 +489,13 @@ class Patch(Agent):
 
     def in_radius(self, radius: float, agents: str = "patches", other: bool = False) -> List[Agent]:
         return self.of(f"sort {'other ' if other else ''}({agents}) in-radius {_num(radius)}")
+
+    def turtles_at(self, dx: int, dy: int, breed: str = "turtles") -> List[Turtle]:
+        """Turtles on the patch at (dx, dy) from this patch."""
+        return self.of(f"sort {breed}-at {_num(dx)} {_num(dy)}")
+
+    def patch_at_heading_and_distance(self, heading: float, distance: float) -> Optional["Patch"]:
+        return self.of(f"patch-at-heading-and-distance {_num(heading)} {_num(distance)}")
 
     def sprout(self, count: int = 1, breed: Optional[str] = None,
                variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> List[Turtle]:

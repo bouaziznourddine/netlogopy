@@ -965,6 +965,28 @@ class NetLogo:
     def auto_plot_off(self) -> None:
         self.command("auto-plot-off")
 
+    @property
+    def plot_name(self) -> str:
+        """Name of the current plot."""
+        return self.report("plot-name")
+
+    def plot_pen_exists(self, name: str) -> bool:
+        return bool(self.report(f"plot-pen-exists? {to_netlogo(name)}"))
+
+    def plot_x_range(self) -> Tuple[float, float]:
+        """(minimum, maximum) of the x axis of the current plot."""
+        low, high = self.report("(list plot-x-min plot-x-max)")
+        return low, high
+
+    def plot_y_range(self) -> Tuple[float, float]:
+        low, high = self.report("(list plot-y-min plot-y-max)")
+        return low, high
+
+    @property
+    def autoplot(self) -> bool:
+        """True when the current plot rescales itself (NetLogo 7)."""
+        return bool(self.report("autoplot?"))
+
     def setup_plots(self) -> None:
         self.command("setup-plots")
 
@@ -1002,6 +1024,236 @@ class NetLogo:
 
     def ride(self, turtle: Turtle) -> None:
         self.command(f"ride {turtle.to_netlogo()}")
+
+    def inspect(self, agent: Agent) -> None:
+        """Open an agent monitor (in the NetLogo window)."""
+        self.command(f"inspect {agent.to_netlogo()}")
+
+    def stop_inspecting(self, agent: Optional[Agent] = None) -> None:
+        """Close the monitor of ``agent``, or the monitors of dead agents."""
+        self.command(f"stop-inspecting {agent.to_netlogo()}" if agent is not None
+                     else "stop-inspecting-dead-agents")
+
+    # ─── choosing agents ──────────────────────────────────────────────────────
+    def any(self, agents: Agents = "turtles", where: Optional[str] = None) -> bool:
+        """``any? agents with [where]``."""
+        return bool(self.report(f"any? {_with(_agentset(agents), where)}"))
+
+    def all(self, agents: Agents, condition: str) -> bool:
+        """``all? agents [condition]``."""
+        return bool(self.report(f"all? {_agentset(agents)} [ {condition} ]"))
+
+    def one_of(self, agents: Agents = "turtles", where: Optional[str] = None) -> Optional[Agent]:
+        """A random agent (None if there is none)."""
+        return self.report(f"one-of {_with(_agentset(agents), where)}")
+
+    def n_of(self, n: int, agents: Agents = "turtles", where: Optional[str] = None) -> List[Agent]:
+        """``n`` random agents, or all of them if there are fewer (``up-to-n-of``)."""
+        chosen = _with(_agentset(agents), where)
+        return self.report(f"[self] of (ifelse-value (count {chosen} > {int(n)}) "
+                           f"[ n-of {int(n)} {chosen} ] [ {chosen} ])")
+
+    def max_one_of(self, agents: Agents, reporter: str) -> Optional[Agent]:
+        """The agent with the highest value of ``reporter``."""
+        return self.report(f"max-one-of {_agentset(agents)} [ {reporter} ]")
+
+    def min_one_of(self, agents: Agents, reporter: str) -> Optional[Agent]:
+        return self.report(f"min-one-of {_agentset(agents)} [ {reporter} ]")
+
+    def max_n_of(self, n: int, agents: Agents, reporter: str) -> List[Agent]:
+        """The ``n`` agents with the highest values, best first."""
+        return self.report(f"sort-on [ (- ({reporter})) ] max-n-of {int(n)} {_agentset(agents)} [ {reporter} ]")
+
+    def min_n_of(self, n: int, agents: Agents, reporter: str) -> List[Agent]:
+        """The ``n`` agents with the lowest values, lowest first."""
+        return self.report(f"sort-on [ {reporter} ] min-n-of {int(n)} {_agentset(agents)} [ {reporter} ]")
+
+    def with_max(self, agents: Agents, reporter: str) -> List[Agent]:
+        """Every agent holding the maximum of ``reporter``."""
+        return self.report(f"sort {_agentset(agents)} with-max [ {reporter} ]")
+
+    def with_min(self, agents: Agents, reporter: str) -> List[Agent]:
+        return self.report(f"sort {_agentset(agents)} with-min [ {reporter} ]")
+
+    def sort_on(self, agents: Agents, reporter: str) -> List[Agent]:
+        """Agents sorted by the value of ``reporter``."""
+        return self.report(f"sort-on [ {reporter} ] {_agentset(agents)}")
+
+    def turtles_on(self, agents: Agents, breed: str = "turtles") -> List[Turtle]:
+        """Turtles standing on the given patches (or on the patches of the given turtles)."""
+        return self.report(f"sort {breed}-on {_agentset(agents)}")
+
+    def set_default_shape(self, breed: str, shape: str) -> None:
+        self.command(f"set-default-shape {breed} {to_netlogo(shape)}")
+
+    # ─── random numbers (NetLogo's generator, so runs stay reproducible) ──────
+    def random(self, n: int) -> int:
+        """Random integer in [0, n)."""
+        return int(self.report(f"random {to_netlogo(n)}"))
+
+    def random_float(self, n: float) -> float:
+        return self.report(f"random-float {to_netlogo(n)}")
+
+    def random_normal(self, mean: float, standard_deviation: float) -> float:
+        return self.report(f"random-normal {to_netlogo(mean)} {to_netlogo(standard_deviation)}")
+
+    def random_poisson(self, mean: float) -> int:
+        return int(self.report(f"random-poisson {to_netlogo(mean)}"))
+
+    def random_exponential(self, mean: float) -> float:
+        return self.report(f"random-exponential {to_netlogo(mean)}")
+
+    def random_gamma(self, alpha: float, lambda_: float) -> float:
+        return self.report(f"random-gamma {to_netlogo(alpha)} {to_netlogo(lambda_)}")
+
+    def random_xcor(self) -> float:
+        return self.report("random-xcor")
+
+    def random_ycor(self) -> float:
+        return self.report("random-ycor")
+
+    def random_pxcor(self) -> int:
+        return int(self.report("random-pxcor"))
+
+    def random_pycor(self) -> int:
+        return int(self.report("random-pycor"))
+
+    # ─── colors, angles ───────────────────────────────────────────────────────
+    def scale_color(self, color: float, value: float, minimum: float, maximum: float) -> float:
+        """Shade of ``color`` proportional to ``value`` between two bounds."""
+        return self.report(f"scale-color {to_netlogo(color)} {to_netlogo(value)} "
+                           f"{to_netlogo(minimum)} {to_netlogo(maximum)}")
+
+    def shade_of(self, color1: float, color2: float) -> bool:
+        return bool(self.report(f"shade-of? {to_netlogo(color1)} {to_netlogo(color2)}"))
+
+    def wrap_color(self, number: float) -> float:
+        return self.report(f"wrap-color {to_netlogo(number)}")
+
+    def extract_rgb(self, color: Any) -> List[float]:
+        return self.report(f"extract-rgb {to_netlogo(color)}")
+
+    def extract_hsb(self, color: Any) -> List[float]:
+        return self.report(f"extract-hsb {to_netlogo(color)}")
+
+    def approximate_rgb(self, red: float, green: float, blue: float) -> float:
+        """NetLogo color number closest to an RGB color."""
+        return self.report(f"approximate-rgb {to_netlogo(red)} {to_netlogo(green)} {to_netlogo(blue)}")
+
+    def approximate_hsb(self, hue: float, saturation: float, brightness: float) -> float:
+        return self.report(f"approximate-hsb {to_netlogo(hue)} {to_netlogo(saturation)} "
+                           f"{to_netlogo(brightness)}")
+
+    def hsb(self, hue: float, saturation: float, brightness: float) -> List[float]:
+        """RGB list of an HSB color."""
+        return self.report(f"hsb {to_netlogo(hue)} {to_netlogo(saturation)} {to_netlogo(brightness)}")
+
+    def subtract_headings(self, heading1: float, heading2: float) -> float:
+        """Smallest angle from ``heading2`` to ``heading1`` (-180 to 180)."""
+        return self.report(f"subtract-headings {to_netlogo(heading1)} {to_netlogo(heading2)}")
+
+    # ─── timer, clock, sound ──────────────────────────────────────────────────
+    def reset_timer(self) -> None:
+        self.command("reset-timer")
+
+    @property
+    def timer(self) -> float:
+        """Seconds since ``reset_timer()`` (or since NetLogo started)."""
+        return self.report("timer")
+
+    def date_and_time(self) -> str:
+        return self.report("date-and-time")
+
+    def beep(self) -> None:
+        self.command("beep")
+
+    # ─── files read and written by NetLogo ────────────────────────────────────
+    def file_open(self, path: PathLike) -> None:
+        self.command(f"file-open {to_netlogo(_path(path))}")
+
+    def file_close(self) -> None:
+        self.command("file-close")
+
+    def file_close_all(self) -> None:
+        self.command("file-close-all")
+
+    def file_flush(self) -> None:
+        self.command("file-flush")
+
+    def file_delete(self, path: PathLike) -> None:
+        self.command(f"file-delete {to_netlogo(_path(path))}")
+
+    def file_exists(self, path: PathLike) -> bool:
+        return bool(self.report(f"file-exists? {to_netlogo(_path(path))}"))
+
+    def file_print(self, value: Any) -> None:
+        self.command(f"file-print {to_netlogo(value)}")
+
+    def file_show(self, value: Any) -> None:
+        self.command(f"file-show {to_netlogo(value)}")
+
+    def file_type(self, value: Any) -> None:
+        self.command(f"file-type {to_netlogo(value)}")
+
+    def file_write(self, value: Any) -> None:
+        self.command(f"file-write {to_netlogo(value)}")
+
+    def file_read(self) -> Any:
+        """Next NetLogo value of the open file."""
+        return self.report("file-read")
+
+    def file_read_line(self) -> str:
+        return self.report("file-read-line")
+
+    def file_read_characters(self, count: int) -> str:
+        return self.report(f"file-read-characters {int(count)}")
+
+    @property
+    def file_at_end(self) -> bool:
+        return bool(self.report("file-at-end?"))
+
+    def set_current_directory(self, path: PathLike) -> None:
+        self.command(f"set-current-directory {to_netlogo(_path(path))}")
+
+    # ─── mouse and dialogs (NetLogo window) ───────────────────────────────────
+    @property
+    def mouse_down(self) -> bool:
+        return bool(self.report("mouse-down?"))
+
+    @property
+    def mouse_inside(self) -> bool:
+        return bool(self.report("mouse-inside?"))
+
+    @property
+    def mouse_xcor(self) -> float:
+        return self.report("mouse-xcor")
+
+    @property
+    def mouse_ycor(self) -> float:
+        return self.report("mouse-ycor")
+
+    def user_message(self, message: Any) -> None:
+        """Show a message box and wait for OK."""
+        self.command(f"user-message {to_netlogo(message)}")
+
+    def user_input(self, message: Any) -> str:
+        return self.report(f"user-input {to_netlogo(message)}")
+
+    def user_yes_or_no(self, message: Any) -> bool:
+        return bool(self.report(f"user-yes-or-no? {to_netlogo(message)}"))
+
+    def user_one_of(self, message: Any, choices: Sequence[Any]) -> Any:
+        return self.report(f"user-one-of {to_netlogo(message)} {to_netlogo(list(choices))}")
+
+    def user_file(self) -> Optional[str]:
+        """Ask for an existing file; None if the user cancels."""
+        return self.report("user-file") or None
+
+    def user_new_file(self) -> Optional[str]:
+        return self.report("user-new-file") or None
+
+    def user_directory(self) -> Optional[str]:
+        return self.report("user-directory") or None
 
     def reset_perspective(self) -> None:
         self.command("reset-perspective")

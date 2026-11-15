@@ -38,6 +38,10 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - **Simulation management**: `start()` runs the model in the background;
   `pause()`, `resume()`, `stop()` and `wait()` control it while Python reads
   and changes the model.
+- **More primitives as methods**: choosing agents (`one_of`, `n_of`, `max_one_of`,
+  `with_max`, `turtles_on`...), NetLogo's random numbers, color conversions,
+  NetLogo file I/O (`file_open`, `file_read`...), timer, mouse, user dialogs,
+  `inspect`, `uphill` / `downhill`, link queries (`in_link_from`, `is_link_neighbor`...).
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
