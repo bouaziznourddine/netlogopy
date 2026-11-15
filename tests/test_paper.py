@@ -1,0 +1,131 @@
+"""The code printed in the SW25 paper must keep running as it is.
+
+Bouaziz, Bettayeb, Sahnoun, Yassine: "Netlogopy: Unlocking Advanced Simulation
+and Integration for NetLogo Using Python", Simulation Workshop 2025,
+doi:10.36819/SW25.019 -- sections 2.3.1 to 2.3.7.  Only the placeholder paths
+are filled in; the import spelling (``netlogopy.nelogopy``) is the paper's.
+"""
+
+import os
+
+import pytest
+
+from conftest import EXAMPLES, WOLF_MODEL
+
+pytestmark = pytest.mark.netlogo
+
+SECTIONS_2_3_1_TO_2_3_6 = '''
+import time
+from netlogopy.nelogopy import *
+
+n = run_netlogo(netlogo_home)
+
+# Resize the NetLogo world
+resize_world(n, 0, 60, 0, 60)
+
+# Create a turtle agent
+car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+
+# Move the agent forward by 1 unit each step
+for i in range(10):
+    time.sleep(1)
+    car01.fd(1)
+    print(f"Agent moved to position {getxyturtle(n, car01)}")
+after_moving = getxyturtle(n, car01)
+
+# Create a second turtle agent
+car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
+
+# Create a link (street) between agents
+street(n, fromm=car01, too=car02, label="street", labelcolor=35, color=35, thickness=0.5)
+
+# Move agent car01 towards car02
+for i in range(10):
+    time.sleep(1)
+    car01.face_to(car02)
+    car01.fd(1)
+    distance = car01.distanceto(car02)
+    print(f"Distance to car02: {distance}")
+after_approach = distance
+
+# Set a background image
+set_background(n, background_image)
+
+# Get the agent's position
+position = getxyturtle(n, car01)
+print(f"Agent position: {position}")
+
+# Set the agent's position
+car01.setxy(10, 10)
+after_setxy = getxyturtle(n, car01)
+
+# Move car01 to the position of car02
+car01.move_to(car02)
+
+# Hide the agent car01
+car01.hideturtle()
+
+# Change the shape of car01 to 'default'
+car01.set_shape('default')
+
+# Calculate the distance between car01 and car02
+distance = distancebetween(n, car01, car02)
+print(f"Distance between car01 and car02: {distance}")
+'''
+
+SECTION_2_3_7 = '''
+import time, os, sys
+from netlogopy.nelogopy import *
+
+n = run_netlogo(netlogo_home, path_model)
+
+# Resize world
+resize_world(n, 0, 70, 0, 55)
+
+# Initialize the original NetLogo model
+run_command(n, "setup")
+
+# Add Python-controlled agents
+car01 = pyturtle(n, x=20, y=20, shape="car", size_shape=4, color=15, name="car01", labelcolor=15)
+car02 = pyturtle(n, x=5, y=5, shape="car", size_shape=4, color=55, name="car02", labelcolor=55)
+street(n, fromm=car01, too=car02, label="street", labelcolor=35, color=35, shape="default", thickness=0.5)
+
+for i in range(100):
+    run_command(n, "go")  # Run the NetLogo model step
+    time.sleep(0.1)
+    print(f"*********** {i} ********")
+    car01.fd(1)
+    if i % 20 == 0:
+        car01.setxy(10, 10)
+'''
+
+
+@pytest.fixture
+def paper(monkeypatch):
+    monkeypatch.setenv("NETLOGOPY_HEADLESS", "1")
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+    namespace = {"netlogo_home": None}
+    yield namespace
+    session = namespace.get("n")
+    if session is not None:
+        session.close_model()
+
+
+def test_sections_2_3_1_to_2_3_6(paper):
+    paper["background_image"] = os.path.join(EXAMPLES, "netlogopy.png")
+    exec(SECTIONS_2_3_1_TO_2_3_6, paper)
+    assert paper["after_moving"] == [20, 30]              # ten steps north
+    assert paper["after_approach"] < 26 and paper["after_setxy"] == [10, 10]
+    car01, car02 = paper["car01"], paper["car02"]
+    assert paper["distance"] == 0 and car01.get_xy() == car02.get_xy() == [5, 5]
+    assert car01.hidden and car01.get_shape() == "default"
+    assert paper["n"].count("streets") == 1
+
+
+def test_section_2_3_7_existing_model(paper):
+    paper["path_model"] = WOLF_MODEL
+    exec(SECTION_2_3_7, paper)
+    n = paper["n"]
+    assert n.ticks == 100 and (n.world_width, n.world_height) == (71, 56)
+    assert n.count("pyturtles") == 2 and n.count("streets") == 1
+    assert paper["car01"].get_xy() == [10, 29]            # reset at i = 80, then 19 steps

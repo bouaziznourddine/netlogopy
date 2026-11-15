@@ -2,6 +2,7 @@
 
 import os
 import threading
+import time
 
 import pytest
 
@@ -193,6 +194,50 @@ def test_run_until_and_schedule_reporters(nl):
     assert results == [[2, 0], [4, 0], [6, 0]]
     with pytest.raises(ValueError):
         nl.schedule_reporters(["ticks"])
+
+
+def _wait_for(condition, timeout=10.0):
+    deadline = time.time() + timeout
+    while not condition():
+        assert time.time() < deadline, "timed out"
+        time.sleep(0.005)
+
+
+def test_background_run_start_pause_resume_stop(nl):
+    nl.start(interval=0.001)                     # the bundled go procedure ticks
+    assert nl.running and not nl.paused
+    _wait_for(lambda: nl.ticks >= 5)             # Python reads while the model runs
+    nl.pause()
+    frozen = nl.ticks
+    time.sleep(0.05)
+    assert nl.paused and nl.running and nl.ticks == frozen
+    nl.create_turtles(2)                         # and acts while it is paused
+    nl.resume()
+    _wait_for(lambda: nl.ticks > frozen)
+    with pytest.raises(NetLogoError):
+        nl.start()                               # one background run at a time
+    steps = nl.stop()
+    assert not nl.running and steps == nl.ticks and nl.count() == 2
+    assert nl.stop() == 0 and nl.wait() is True  # nothing to stop any more
+
+
+def test_background_run_ends_by_itself(nl):
+    nl.start(max_steps=7)
+    assert nl.wait(10) and nl.ticks == 7 and nl.steps_run == 7 and nl.stop() == 7
+    nl.start(until="ticks >= 12")
+    assert nl.wait(10) and nl.ticks == 12
+    nl.stop()
+    nl.start("ask turtle 999 [ fd 1 ]")          # errors come back to the caller
+    with pytest.raises(NetLogoRuntimeError, match="NOBODY"):
+        nl.wait(10)
+    assert not nl.running
+
+
+def test_closing_ends_the_background_run():
+    session = NetLogo(setup=True)
+    session.start(interval=0.001)
+    session.close()
+    assert not session.running and session.closed
 
 
 def test_files(nl, tmp_path):

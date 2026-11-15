@@ -35,6 +35,9 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   DataFrame); `run_until()`; nl4py-compatible `schedule_reporters()`.
 - **Experiments**: `run_experiment()` runs parameter sweeps like BehaviorSpace,
   with repetitions, seeds, stop conditions and parallel workers.
+- **Simulation management**: `start()` runs the model in the background;
+  `pause()`, `resume()`, `stop()` and `wait()` control it while Python reads
+  and changes the model.
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
@@ -44,8 +47,14 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `scenario` chooser, `user-text` input, monitors, `My Plot` and an output area.
 - `python -m netlogopy` checks the installation: JPype, NetLogo, Java, and a
   headless start of NetLogo.
+- The code printed in the SW25 paper runs as it is: `netlogopy.nelogopy` (the
+  paper's import spelling) is back, and a test executes the paper's listings.
+- `PyTurtle` and `Street` class names, and `pyturtle.fields` (the extra
+  attributes as a live dict).
 - Tests against a real NetLogo, a GitHub Actions workflow, type information
-  (`py.typed`), and seven new examples (`Examples/advanced`).
+  (`py.typed`), and eight new examples (`Examples/advanced`), including the
+  job shop with human operators presented at SW25 (simulation and
+  re-optimisation of the machine queues).
 
 ### Changed
 

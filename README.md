@@ -25,6 +25,8 @@ with NetLogo("Wolf Sheep Predation.nlogo") as nl:    # headless by default
   `sprout`, `create_link_with`...).
 - **Window or headless**: watch the simulation in the NetLogo window, or run
   any number of headless models in parallel threads.
+- **Simulation management**: step the model from Python, or start it in the
+  background and pause, resume and stop it while Python reads and changes it.
 - **Interface widgets**: sliders, switches, choosers, inputs, monitors, plots
   and output areas.
 - **Experiments**: parameter sweeps with repetitions, seeds and stop
@@ -227,6 +229,22 @@ nl.ticks, nl.tick(), nl.reset_ticks()
 nl.random_seed(42)                            # reproducible runs
 ```
 
+### Starting, pausing and stopping
+
+`start()` runs the model in the background, like a forever button, while
+Python keeps reading and changing it:
+
+```python
+nl.start("go", interval=0.05)        # also: max_steps=500, until="not any? sheep"
+while nl.running and nl.report("count sheep") < 300:
+    time.sleep(0.5)
+nl.pause()                           # the step in progress finishes first
+nl.globals["wolf-reproduce"] = 8     # change the model while it is paused
+nl.resume()
+nl.wait(timeout=10)                  # wait for it to end by itself, at most 10 s
+steps = nl.stop()                    # number of steps made
+```
+
 ### World and patches
 
 ```python
@@ -299,6 +317,7 @@ then add `__includes [ "base.nls" ]` at the top of the model's Code tab.
 | Session | `NetLogo(model=None, gui=False, netlogo_home=None, java_home=None, jvm_args=(), setup=False)`, `open_model`, `close` / `close_model`, `closed`, `gui`, `model_path`, `netlogo_version` |
 | Code | `command(*commands)`, `report(reporter or list)`, `report_java` |
 | Simulation | `setup`, `go(times)`, `run_until(condition, max_steps)`, `collect(...)`, `schedule_reporters(...)` |
+| Background run | `start(command, interval, max_steps, until)`, `pause`, `resume`, `stop`, `wait(timeout)`, `running`, `paused`, `steps_run` |
 | Ticks | `ticks`, `tick`, `tick_advance`, `reset_ticks`, `clear_ticks` |
 | Globals | `globals[...]`, `get_global`, `set_global`, `global_names` |
 | World | `min_pxcor`, `max_pxcor`, `min_pycor`, `max_pycor`, `world_width`, `world_height`, `resize_world`, `patch_size`, `set_patch_size`, `wrap_x`, `wrap_y`, `set_topology`, `random_seed`, `new_seed`, `clear_all`, `clear_turtles`, `clear_patches`, `clear_links`, `clear_globals`, `clear_drawing`, `display`, `no_display` |
@@ -335,7 +354,8 @@ then add `__includes [ "base.nls" ]` at the top of the model's Code tab.
 Scripts written for netlogopy 0.x keep working (`from netlogopy.netlogopy import *`
 also gives the new classes). `run_netlogo()` now returns a `NetLogo` session,
 so the new methods are available on it, and `pyturtle` objects are `Turtle`
-objects.
+objects. The code printed in the [SW25 paper](#citation) runs as it is,
+including its import spelling `from netlogopy.nelogopy import *`.
 
 | Function | Description |
 |---|---|
@@ -357,6 +377,8 @@ objects.
 | `list2nllist`, `de_copy` | utilities |
 | `pyturtle(n, x, y, shape, size_shape, color, name, labelcolor, fields)` | a Python-driven turtle: `fd`, `bk`, `rt`, `lt`, `setxy`, `move_to`, `face_to`, `set_heading`, `get_xy`, `distanceto`, `set_color`, `set_shape`, `set_size`, `set_label`, `hideturtle`, `showturtle`, `dieturtle`, `pen_down`, `pen_up`, `stamp`, `in_radius`, `turtles_here`... |
 | `street(n, fromm, too, label, labelcolor, color, shape, thickness)` | a directed link between two pyturtles |
+| `PyTurtle`, `Street` | CamelCase names of `pyturtle` and `street` |
+| `car.fields` | the extra attributes given with `fields=`, as a live dict (`car.fields["busy"]` is `car.busy`) |
 
 Changes in 1.0: `n.report()` returns Python values instead of strings, and
 `base.nls` only declares the two breeds (see the [changelog](CHANGELOG.md)).
@@ -367,7 +389,7 @@ Changes in 1.0: `n.report()` returns Python values instead of strings, and
 |---|---|
 | [Examples/simple](Examples/simple) | 1–26: one 0.x function per script (turtles, streets, movement, colors, pen, ticks, slider, switch, monitor, plot...) |
 | [Examples/complexe](Examples/complexe) | 27: controlling an existing model; Fire and Wolf Sheep with Python agents |
-| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore |
+| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation) |
 
 ```bash
 python Examples/advanced/28-quickstart.py

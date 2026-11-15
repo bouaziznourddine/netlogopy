@@ -13,6 +13,7 @@ primitive stays reachable through :meth:`NetLogo.command` and
 
 import os
 import threading
+import weakref
 from collections import OrderedDict
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -112,6 +113,42 @@ def _table(columns: Dict[str, list], as_dataframe: bool) -> Any:
     return pandas.DataFrame(columns)
 
 
+class _BackgroundRun(threading.Thread):
+    """Runs a command again and again on a session (see :meth:`NetLogo.start`)."""
+
+    def __init__(self, nl: "NetLogo", command: str, interval: float,
+                 max_steps: Optional[int], until: Optional[str]):
+        super().__init__(name="netlogopy-run", daemon=True)
+        self.nl = nl
+        self.command = command
+        self.interval = interval
+        self.max_steps = max_steps
+        self.until = until
+        self.steps = 0
+        self.error: Optional[BaseException] = None
+        self.stop_requested = threading.Event()
+        self.resumed = threading.Event()
+        self.resumed.set()
+
+    def run(self) -> None:
+        try:
+            while not self.stop_requested.is_set():
+                self.resumed.wait()
+                if self.max_steps is not None and self.steps >= self.max_steps:
+                    break
+                with self.nl._lock:                # a step is never cut by pause()
+                    if self.stop_requested.is_set() or not self.resumed.is_set():
+                        continue
+                    if self.until and self.nl.report(self.until):
+                        break
+                    self.nl.command(self.command)
+                    self.steps += 1
+                if self.interval:
+                    self.stop_requested.wait(self.interval)
+        except BaseException as exc:               # re-raised by stop() / wait()
+            self.error = exc
+
+
 class NetLogo:
     """A NetLogo model running inside this Python process.
 
@@ -141,6 +178,7 @@ class NetLogo:
         self._owner: Any = None
         self._singulars: Dict[str, str] = {}
         self._handle: Optional[_java.WorkspaceHandle] = None
+        self._runner: Optional[_BackgroundRun] = None
         self.netlogo_home = _java.ensure_jvm(
             os.fspath(netlogo_home) if netlogo_home else None,
             os.fspath(java_home) if java_home else None,
@@ -153,6 +191,7 @@ class NetLogo:
             self._app = _java.launch_gui()
             self._ws = self._app.workspace()
             self._handle = _java.WorkspaceHandle(self._ws, app=self._app)
+            self._handle.owner = weakref.ref(self)
         else:
             self._app = None
             self._ws = None
@@ -171,6 +210,7 @@ class NetLogo:
         path = _path(path)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"NetLogo model not found: {path}")
+        self.stop()                                # a background run ends with its model
         with self._lock:
             if self.gui:
                 self._check_open()
@@ -190,6 +230,7 @@ class NetLogo:
                     except BaseException:
                         handle.close()
                         raise
+                    handle.owner = weakref.ref(self)
                     previous, self._ws, self._handle = self._handle, workspace, handle
                     if previous is not None:
                         previous.close()
@@ -204,6 +245,7 @@ class NetLogo:
 
     def close(self) -> None:
         """Dispose the workspace (closes the window in GUI mode). Idempotent."""
+        self._stop_quietly()
         handle, self._handle = self._handle, None
         self._cache.clear()
         if handle is not None:
@@ -425,6 +467,90 @@ class NetLogo:
             if ticks == previous:
                 break
         return results
+
+    # --- background runs: start / pause / resume / stop ---------------------------
+    def start(self, command: str = "go", *, interval: float = 0.0,
+              max_steps: Optional[int] = None, until: Optional[str] = None) -> None:
+        """Run ``command`` again and again in the background, like a forever button.
+
+        Python keeps the hand: read reporters, move agents, :meth:`pause`,
+        :meth:`resume` and :meth:`stop` while the model runs.  ``interval`` is
+        a delay in seconds between two steps; the run ends by itself after
+        ``max_steps`` steps or once the NetLogo condition ``until`` is true.
+        """
+        with self._lock:
+            self._check_open()
+            if self.running:
+                raise NetLogoError("a background run is already active: stop() it first")
+            self._runner = _BackgroundRun(self, command, max(0.0, float(interval)), max_steps, until)
+            self._runner.start()
+
+    def pause(self) -> None:
+        """Suspend the background run (the step in progress finishes first)."""
+        runner = self._runner
+        if runner is not None:
+            runner.resumed.clear()
+            with self._lock:                       # wait for the step in progress
+                pass
+
+    def resume(self) -> None:
+        """Continue a paused background run."""
+        runner = self._runner
+        if runner is not None:
+            runner.resumed.set()
+
+    def stop(self) -> int:
+        """End the background run and return how many steps it made.
+
+        Raises the error that interrupted the run, if any.
+        """
+        runner, self._runner = self._runner, None
+        if runner is None:
+            return 0
+        runner.stop_requested.set()
+        runner.resumed.set()
+        if runner is not threading.current_thread():
+            runner.join()
+        if runner.error is not None:
+            raise runner.error
+        return runner.steps
+
+    def wait(self, timeout: Optional[float] = None) -> bool:
+        """Wait for the background run to end by itself; False if ``timeout`` expired first."""
+        runner = self._runner
+        if runner is None:
+            return True
+        runner.join(timeout)
+        if runner.is_alive():
+            return False
+        if runner.error is not None:
+            self._runner = None
+            raise runner.error
+        return True
+
+    @property
+    def running(self) -> bool:
+        """True while a background run is active (paused or not)."""
+        runner = self._runner
+        return runner is not None and runner.is_alive()
+
+    @property
+    def paused(self) -> bool:
+        """True while the background run is suspended by :meth:`pause`."""
+        runner = self._runner
+        return runner is not None and runner.is_alive() and not runner.resumed.is_set()
+
+    @property
+    def steps_run(self) -> int:
+        """Steps made so far by the current background run."""
+        runner = self._runner
+        return runner.steps if runner is not None else 0
+
+    def _stop_quietly(self) -> None:
+        try:
+            self.stop()
+        except Exception:                          # closing must not fail on a run's error
+            pass
 
     # ─── ticks ────────────────────────────────────────────────────────────────
     @property

@@ -360,6 +360,7 @@ class WorkspaceHandle:
     def __init__(self, workspace: Any, app: Any = None):
         self.workspace = workspace
         self.app = app
+        self.owner: Any = None                 # weak reference to the NetLogo session
         self.closed = False
         self._close_lock = threading.Lock()
         with _lock:
@@ -370,6 +371,12 @@ class WorkspaceHandle:
             if self.closed:
                 return
             self.closed = True
+        try:
+            session = self.owner() if self.owner is not None else None
+            if session is not None:
+                session._stop_quietly()            # end its background run first
+        except Exception:
+            pass
         try:
             if self.app is not None:
                 _close_gui(self.app)
