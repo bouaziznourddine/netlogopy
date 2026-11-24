@@ -26,6 +26,7 @@ jobs:
       - name: Build the wheel and the sdist
         run: |
           python -m pip install build twine
+          python tools/readme_links.py absolute   # PyPI shows the README outside the repository
           python -m build
           python -m twine check --strict dist/*
       - name: The version matches the release tag

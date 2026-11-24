@@ -78,5 +78,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install build twine
+      - run: python tools/readme_links.py absolute
       - run: python -m build
       - run: python -m twine check dist/*
