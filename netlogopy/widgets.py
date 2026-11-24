@@ -130,10 +130,27 @@ class WidgetsMixin:
                    agents: str = "observer", key: Optional[str] = None,
                    disable_until_ticks: bool = False, x: Optional[int] = None,
                    y: Optional[int] = None, width: int = 115, height: int = 33) -> None:
-        """Add a button running ``commands`` (default: the procedure named ``label``).
+        """Add a button to the interface (NetLogo window only).
 
-        ``forever`` makes it a forever button; ``agents`` is "observer", "turtles",
-        "patches" or "links"; ``key`` is an action key (one letter).
+        Parameters
+        ----------
+        label : str
+            Text of the button.
+        commands : str, optional
+            NetLogo commands it runs (default: the procedure named ``label``).
+        forever : bool, default False
+            Make it a forever button.
+        agents : str, default "observer"
+            "observer", "turtles", "patches" or "links".
+        key : str, optional
+            Action key (one letter).
+        disable_until_ticks : bool, default False
+            Disable the button until the ticks start.
+        x, y : int, optional
+            Position in pixels (default: a column right of the model's widgets,
+            under the widgets already added there).
+        width, height : int
+            Size in pixels.
         """
         self._add_widget(
             ["BUTTON", _label(label), _escape(commands if commands is not None else label),
@@ -174,8 +191,25 @@ class WidgetsMixin:
     def add_input(self, name: str, value: Any = "", *, kind: Optional[str] = None,
                   multiline: bool = False, x: Optional[int] = None, y: Optional[int] = None,
                   width: int = 240, height: int = 60) -> None:
-        """Add an input box.  ``kind``: "number", "string" (default for text), "color",
-        "reporter" or "commands"."""
+        """Add an input box; ``name`` becomes a global (NetLogo window only).
+
+        Parameters
+        ----------
+        name : str
+            Name of the global.
+        value : Any, default ""
+            Initial value.
+        kind : str, optional
+            "number", "string", "color", "reporter" or "commands" (default:
+            "number" for numbers, "string" otherwise).
+        multiline : bool, default False
+            Allow several lines of text.
+        x, y : int, optional
+            Position in pixels (default: a column right of the model's widgets,
+            under the widgets already added there).
+        width, height : int
+            Size in pixels.
+        """
         if kind is None:
             kind = "number" if isinstance(value, (int, float)) and not isinstance(value, bool) else "string"
         text = _number(value) if kind in ("number", "color") else _escape(value)
@@ -196,11 +230,39 @@ class WidgetsMixin:
                  colors: Optional[Mapping[str, Any]] = None, mode: str = "line",
                  x: Optional[int] = None, y: Optional[int] = None,
                  width: int = 240, height: int = 160) -> None:
-        """Add a plot.
+        """Add a plot to the interface (NetLogo window only).
 
-        ``pens`` is a list of pen names, or ``{pen name: update commands}`` such as
-        ``{"sheep": "plot count sheep"}`` (run at each tick).  ``colors`` gives a
-        NetLogo color per pen; ``mode`` is "line", "bar" or "point".
+        Parameters
+        ----------
+        name : str
+            Name of the plot.
+        pens : sequence of str or mapping, optional
+            Pen names, or ``{pen name: update commands}`` such as
+            ``{"sheep": "plot count sheep"}`` (run at each tick).  Default:
+            one pen named "default".
+        x_label, y_label : str
+            Axis labels.
+        x_range, y_range : tuple of float, default (0, 10)
+            Initial ranges of the axes.
+        autoplot : bool, default True
+            Widen the ranges to fit the points.
+        legend : bool, default False
+            Show the pen legend.
+        setup, update : str
+            Plot setup and update commands.
+        colors : mapping, optional
+            A NetLogo color per pen name.
+        mode : str, default "line"
+            "line", "bar" or "point".
+        x, y : int, optional
+            Position in pixels (default: a column right of the model's widgets,
+            under the widgets already added there).
+        width, height : int
+            Size in pixels.
+
+        Examples
+        --------
+        >>> nl.add_plot("population", {"sheep": "plot count sheep"}, colors={"sheep": 15})
         """
         if pens is None:
             pens = ["default"]
@@ -235,10 +297,20 @@ class WidgetsMixin:
                           "1" if transparent else "0"], x, y, width, height)
 
     def press_button(self, label: str, *, wait: float = 10.0) -> None:
-        """Click a button of the interface.
+        """Click a button of the interface (NetLogo window only).
 
-        A normal button is waited for (at most ``wait`` seconds); a forever
-        button starts, and stops when pressed again.
+        Parameters
+        ----------
+        label : str
+            Text of the button.
+        wait : float, default 10.0
+            A normal button is waited for, at most ``wait`` seconds; a
+            forever button starts, and stops when pressed again.
+
+        Raises
+        ------
+        NetLogoError
+            The interface has no button with this label.
         """
         import time
         panel = self._interface_panel()

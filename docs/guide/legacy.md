@@ -46,7 +46,7 @@ set_slider(n, "speed", 5)
 
 - `n.report()` returns Python values instead of strings (`float(n.report(...))`
   still works).
-- nl4py is no longer needed: NetLogo runs in the Python process.
+- No Java server is needed any more: NetLogo runs in the Python process.
 - `base.nls` only declares the two breeds.
 - Python 3.8 or newer.
 

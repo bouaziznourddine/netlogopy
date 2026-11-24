@@ -13,8 +13,8 @@ and collect data, in the NetLogo window or headless.
 
 <div class="demo-grid" markdown>
 <figure markdown>
-![Job shop with human operators](assets/gifs/job-shop.gif)
-<figcaption>Job shop with human operators: NetLogo shows the workshop, Python re-optimises the queues (<a href="examples/#job-shop">example 35</a>)</figcaption>
+![Epidemic with a Python vaccination policy](assets/gifs/python-policy.gif)
+<figcaption>NetLogo simulates an epidemic, a Python policy decides who is vaccinated (<a href="examples/#python-policy">example 38</a>)</figcaption>
 </figure>
 <figure markdown>
 ![Wolf Sheep Predation with Python agents](assets/gifs/wolf-sheep-with-python-agents.gif)

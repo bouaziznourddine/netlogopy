@@ -7,9 +7,9 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 
 ### New
 
-- **No more nl4py.** netlogopy talks to NetLogo's own Java API through
-  [JPype](https://jpype.readthedocs.io): no Java server, no socket, no port 25333.
-  Compiled NetLogo code is cached, so a repeated call takes about 0.1 to 0.3 ms
+- **NetLogo in the Python process.** netlogopy talks to NetLogo's own Java API through
+  [JPype](https://jpype.readthedocs.io): no Java server, no socket, no port.
+  Compiled NetLogo code is cached, so a repeated call takes a few hundredths of a millisecond
   instead of the 3 to 5 ms needed to compile it every time.
 - **`NetLogo` class**: a session on a model, in the NetLogo window (`gui=True`)
   or headless (default). Any number of headless sessions can run in one process,
@@ -32,7 +32,7 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `export_world` / `import_world`, `export_plot`, `export_interface`...
 - **Network layouts**: `layout_circle`, `layout_spring`, `layout_radial`, `layout_tutte`.
 - **Data collection**: `collect()` records reporters over time (dict or pandas
-  DataFrame); `run_until()`; nl4py-compatible `schedule_reporters()`.
+  DataFrame); `run_until()`; `schedule_reporters()` on a tick schedule.
 - **Experiments**: `run_experiment()` runs parameter sweeps like BehaviorSpace,
   with repetitions, seeds, stop conditions and parallel workers.
 - **Simulation management**: `start()` runs the model in the background;
@@ -49,8 +49,10 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `add_slider`, `add_switch`, `add_chooser`, `add_input`, `add_monitor`,
   `add_plot`, `add_output`, `add_note`, and `press_button` to click a button.
 - **Documentation site** (MkDocs Material, GitHub Pages): installation,
-  guide, examples with animations, API reference, paper.
-  `tools/record_gifs.py` records the animations from the example scripts.
+  tutorial, guide, examples with their code and animations, API reference
+  (NumPy-style docstrings), comparison with pynetlogo, paper.
+  `tools/record_gifs.py` records the animations from the example scripts and
+  `tools/benchmark.py` times repeated calls.
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
@@ -65,12 +67,15 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `PyTurtle` and `Street` class names, and `pyturtle.fields` (the extra
   attributes as a live dict).
 - Tests against a real NetLogo, a GitHub Actions workflow, type information
-  (`py.typed`), and fourteen new examples (`Examples/advanced`), including the
+  (`py.typed`), and seventeen new examples (`Examples/advanced`), including the
   job shop with human operators presented at SW25 (simulation and
   re-optimisation of the machine queues), interface widgets added from
   Python, a background run paused and changed by Python (37), and a Python
   vaccination policy in an epidemic (38), calibration with an optimiser (39),
-  reinforcement learning in a maze (40) and routing on a road network (41).
+  reinforcement learning in a maze (40), routing on a road network (41),
+  Schelling segregation measured by Python (42), a room evacuated with exits
+  chosen by Python (43) and a wealth tax set by a Python controller (44).
+- A PyPI publishing workflow (trusted publishing on a GitHub release).
 - The 26 one-function examples of `Examples/simple` are merged into six
   (first agents, movement, appearance, ticks and output, widgets, plots),
   which still show every 0.x function.
@@ -109,4 +114,4 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 
 ### Removed
 
-- The nl4py dependency, `setup.py`, build artifacts and stray files from the repository.
+- The Java server dependency, `setup.py`, build artifacts and stray files from the repository.

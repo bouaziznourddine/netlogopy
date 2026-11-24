@@ -15,6 +15,14 @@
 pip install netlogopy
 ```
 
+!!! note "netlogopy 1.0 before its PyPI release"
+    Until version 1.0 is published on PyPI, `pip install netlogopy` installs
+    the 0.x version. Install 1.0 from GitHub:
+
+    ```bash
+    pip install git+https://github.com/bouaziznourddine/netlogopy
+    ```
+
 With pandas and numpy (DataFrames and array grids):
 
 ```bash

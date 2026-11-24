@@ -162,18 +162,39 @@ class NetLogo(WidgetsMixin):
 
     Parameters
     ----------
-    model : path of the ``.nlogo`` / ``.nlogox`` file to open
-        (default: the model bundled with netlogopy).
-    gui : open the NetLogo window (True) or run headless (False, default).
-        One window per Python process; any number of headless sessions.
-        The environment variable ``NETLOGOPY_HEADLESS=1`` turns every
-        window off (to run window scripts in tests, CI or on a server).
-    netlogo_home : NetLogo installation folder (default: ``NETLOGO_HOME``,
-        else the newest installed NetLogo).
-    java_home : Java runtime to use (default: NetLogo's own runtime when
-        it is Java 9+, else ``JAVA_HOME``...).
-    jvm_args : extra JVM options, e.g. ``["-Xmx8g"]``.
-    setup : run the model's ``setup`` procedure right after opening it.
+    model : str or os.PathLike, optional
+        Path of the ``.nlogo`` / ``.nlogox`` file to open (default: the
+        model bundled with netlogopy).
+    gui : bool, default False
+        Open the NetLogo window (True) or run headless (False).  One window
+        per Python process; any number of headless sessions.  The
+        environment variable ``NETLOGOPY_HEADLESS=1`` turns every window off
+        (to run window scripts in tests, CI or on a server).
+    netlogo_home : str or os.PathLike, optional
+        NetLogo installation folder (default: ``NETLOGO_HOME``, else the
+        newest installed NetLogo).
+    java_home : str or os.PathLike, optional
+        Java runtime to use (default: NetLogo's own runtime when it is
+        Java 9+, else ``JAVA_HOME``...).
+    jvm_args : sequence of str, optional
+        Extra JVM options, e.g. ``["-Xmx8g"]``.
+    setup : bool, default False
+        Run the model's ``setup`` procedure right after opening it.
+
+    Raises
+    ------
+    NetLogoNotFoundError
+        No NetLogo installation or no suitable Java runtime was found.
+    FileNotFoundError
+        ``model`` does not exist.
+
+    Examples
+    --------
+    >>> from netlogopy import NetLogo
+    >>> with NetLogo() as nl:                 # bundled model, headless
+    ...     nl.command("create-turtles 10")
+    ...     nl.report("count turtles")
+    10
     """
 
     def __init__(self, model: Optional[PathLike] = None, *, gui: bool = False,
@@ -259,7 +280,7 @@ class NetLogo(WidgetsMixin):
         if handle is not None:
             handle.close()
 
-    #: Alias kept for code written for nl4py / netlogopy < 1.0.
+    #: Alias kept for code written for netlogopy < 1.0.
     close_model = close
 
     @property
@@ -285,8 +306,23 @@ class NetLogo(WidgetsMixin):
     def command(self, *commands: str) -> None:
         """Run NetLogo commands in the observer context.
 
-        ``nl.command("setup")``, ``nl.command("crt 10", "ask turtles [ fd 1 ]")``.
-        Raises :class:`NetLogoCompileError` or :class:`NetLogoRuntimeError`.
+        Parameters
+        ----------
+        *commands : str
+            NetLogo commands; several arguments are joined by new lines and
+            run as one block.
+
+        Raises
+        ------
+        NetLogoCompileError
+            The code does not compile.
+        NetLogoRuntimeError
+            NetLogo raised an error while running it.
+
+        Examples
+        --------
+        >>> nl.command("setup")
+        >>> nl.command("crt 10", "ask turtles [ fd 1 ]")
         """
         source = "\n".join(commands)
         if not source.strip():
@@ -329,8 +365,32 @@ class NetLogo(WidgetsMixin):
     def report(self, reporter: Union[str, Sequence[str]]) -> Any:
         """Evaluate a NetLogo reporter and return its value converted to Python.
 
-        Pass a list of reporters to get a list of values in a single call:
-        ``nl.report(["count sheep", "count wolves"])``.
+        Parameters
+        ----------
+        reporter : str or sequence of str
+            A NetLogo reporter, or a list of reporters evaluated in a single
+            NetLogo call.
+
+        Returns
+        -------
+        Any
+            The value converted to Python (numbers, strings, booleans, lists,
+            :class:`Turtle`, :class:`Patch`, :class:`Link`...), or a list of
+            values when ``reporter`` is a list.
+
+        Raises
+        ------
+        NetLogoCompileError
+            The reporter does not compile.
+        NetLogoRuntimeError
+            NetLogo raised an error while evaluating it.
+
+        Examples
+        --------
+        >>> nl.report("count turtles")
+        10
+        >>> nl.report(["count sheep", "count wolves"])
+        [100, 50]
         """
         if isinstance(reporter, str):
             source = reporter
@@ -413,7 +473,19 @@ class NetLogo(WidgetsMixin):
                   max_steps: Optional[int] = None) -> int:
         """Run ``command`` until the NetLogo ``condition`` reports true.
 
-        Returns the number of times ``command`` ran.
+        Parameters
+        ----------
+        condition : str
+            NetLogo reporter checked before each step, e.g. ``"not any? sheep"``.
+        command : str, default "go"
+            NetLogo commands run at each step.
+        max_steps : int, optional
+            Stop after this many steps even if ``condition`` is still false.
+
+        Returns
+        -------
+        int
+            The number of times ``command`` ran.
         """
         steps = 0
         while (max_steps is None or steps < max_steps) and not self.report(condition):
@@ -426,12 +498,35 @@ class NetLogo(WidgetsMixin):
                 until: Optional[str] = None, as_dataframe: bool = False) -> Any:
         """Run the model and record reporters over time.
 
-        ``reporters`` is a reporter, a list of reporters, or a dict
-        ``{column name: reporter}``.  Runs ``command`` ``steps`` times and
-        records the reporters every ``every`` steps (and before the first
-        step when ``include_initial``).  Stops early once the ``until``
-        reporter is true.  Returns ``{"step": [...], column: [...]}`` or a
-        pandas DataFrame.
+        Parameters
+        ----------
+        reporters : str, sequence of str or mapping
+            A reporter, a list of reporters, or a dict
+            ``{column name: reporter}``.
+        steps : int
+            Number of times ``command`` runs.
+        command : str, default "go"
+            NetLogo commands run at each step.
+        every : int, default 1
+            Record the reporters every ``every`` steps.
+        include_initial : bool, default True
+            Also record the reporters before the first step (step 0).
+        until : str, optional
+            NetLogo reporter; the run stops early once it is true.
+        as_dataframe : bool, default False
+            Return a pandas DataFrame instead of a dict.
+
+        Returns
+        -------
+        dict or pandas.DataFrame
+            ``{"step": [...], column: [...]}``, one list per reporter.
+
+        Examples
+        --------
+        >>> nl.setup()
+        >>> data = nl.collect({"sheep": "count sheep"}, steps=100, every=10)
+        >>> data["step"]
+        [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
         """
         names, exprs = _named_reporters(reporters)
         every = max(1, int(every))
@@ -458,10 +553,26 @@ class NetLogo(WidgetsMixin):
     def schedule_reporters(self, reporters: Sequence[str], start_at_tick: int = 0,
                            interval_ticks: int = 1, stop_at_tick: int = -1,
                            go_command: str = "go") -> List[List[Any]]:
-        """nl4py-compatible: run ``go`` and record ``reporters`` on a tick schedule.
+        """Run ``go`` and record ``reporters`` on a tick schedule.
 
-        Records every ``interval_ticks`` ticks from ``start_at_tick`` until
-        ``stop_at_tick``; also stops when ``go`` no longer advances the ticks.
+        Parameters
+        ----------
+        reporters : sequence of str
+            NetLogo reporters recorded together.
+        start_at_tick : int, default 0
+            First tick at which the reporters are recorded.
+        interval_ticks : int, default 1
+            Record every ``interval_ticks`` ticks.
+        stop_at_tick : int
+            Tick at which the run ends (required, ``>= 0``).  The run also
+            ends when ``go`` no longer advances the ticks.
+        go_command : str, default "go"
+            NetLogo commands run at each step.
+
+        Returns
+        -------
+        list of list
+            One list of reporter values per recorded tick.
         """
         if stop_at_tick is None or stop_at_tick < 0:
             raise ValueError("stop_at_tick must be >= 0")
@@ -482,9 +593,28 @@ class NetLogo(WidgetsMixin):
         """Run ``command`` again and again in the background, like a forever button.
 
         Python keeps the hand: read reporters, move agents, :meth:`pause`,
-        :meth:`resume` and :meth:`stop` while the model runs.  ``interval`` is
-        a delay in seconds between two steps; the run ends by itself after
-        ``max_steps`` steps or once the NetLogo condition ``until`` is true.
+        :meth:`resume` and :meth:`stop` while the model runs.
+
+        Parameters
+        ----------
+        command : str, default "go"
+            NetLogo commands run at each step.
+        interval : float, default 0.0
+            Delay in seconds between two steps.
+        max_steps : int, optional
+            The run ends by itself after this many steps.
+        until : str, optional
+            NetLogo reporter; the run ends by itself once it is true.
+
+        Raises
+        ------
+        NetLogoError
+            A background run is already active.
+
+        See Also
+        --------
+        wait : wait for the run to end by itself.
+        stop : end the run and get the number of steps.
         """
         with self._lock:
             self._check_open()
@@ -510,7 +640,15 @@ class NetLogo(WidgetsMixin):
     def stop(self) -> int:
         """End the background run and return how many steps it made.
 
-        Raises the error that interrupted the run, if any.
+        Returns
+        -------
+        int
+            Steps made by the run (0 when no run was active).
+
+        Raises
+        ------
+        Exception
+            The error that interrupted the run, if any.
         """
         runner, self._runner = self._runner, None
         if runner is None:
@@ -730,9 +868,29 @@ class NetLogo(WidgetsMixin):
                        **kwargs: Any) -> List[Turtle]:
         """Create turtles and return them.
 
-        ``nl.create_turtles(10, "sheep", color=15, xcor=Code("random-xcor"))``.
-        ``ordered=True`` spreads their headings evenly (``create-ordered-turtles``).
-        Variables whose name is not a Python identifier go in ``variables``.
+        Parameters
+        ----------
+        count : int, default 1
+            Number of turtles.
+        breed : str, optional
+            Plural breed name (default: plain turtles).
+        ordered : bool, default False
+            Spread their headings evenly (``create-ordered-turtles``).
+        variables : dict, optional
+            Variables whose name is not a Python identifier
+            (``{"energy?": True}``).
+        **kwargs
+            Turtle variables to set, e.g. ``color=15``; use
+            :class:`Code` for NetLogo expressions.
+
+        Returns
+        -------
+        list of Turtle
+            The new turtles, sorted by ``who``.
+
+        Examples
+        --------
+        >>> sheep = nl.create_turtles(10, "sheep", color=15, xcor=Code("random-xcor"))
         """
         count = int(count)
         if count <= 0:
@@ -750,8 +908,24 @@ class NetLogo(WidgetsMixin):
                     variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Link:
         """Create a link between two turtles and return it.
 
-        ``breed`` is the plural link breed name; its directedness is used
-        when ``directed`` is not given.
+        Parameters
+        ----------
+        end1, end2 : Turtle or int
+            The two turtles (or their ``who`` numbers).
+        directed : bool, optional
+            Directed link (``create-link-to``) or not; default: the
+            directedness of ``breed``, undirected for plain links.
+        breed : str, optional
+            Plural link breed name.
+        variables : dict, optional
+            Variables whose name is not a Python identifier.
+        **kwargs
+            Link variables to set, e.g. ``color=15``.
+
+        Returns
+        -------
+        Link
+            The new link.
         """
         a = end1 if isinstance(end1, Turtle) else Turtle(self, end1)
         b = end2 if isinstance(end2, Turtle) else Turtle(self, end2)
@@ -802,10 +976,20 @@ class NetLogo(WidgetsMixin):
     def import_shapes(self, model: Optional[PathLike] = None, *, overwrite: bool = False) -> List[str]:
         """Copy the turtle and link shapes of another model into this one.
 
-        ``model`` defaults to the model bundled with netlogopy (car, person_0,
-        machine...).  Shapes this model already has are kept unless
-        ``overwrite``.  Returns the names of the turtle shapes added.  The copy
-        lasts for the session; the model file is not changed.
+        The copy lasts for the session; the model file is not changed.
+
+        Parameters
+        ----------
+        model : str or os.PathLike, optional
+            Model to copy from (default: the model bundled with netlogopy,
+            with car, person_0, machine...).
+        overwrite : bool, default False
+            Replace the shapes this model already has.
+
+        Returns
+        -------
+        list of str
+            Names of the turtle shapes added.
         """
         added: List[str] = []
         with NetLogo(model, netlogo_home=self.netlogo_home) as source:
@@ -832,8 +1016,17 @@ class NetLogo(WidgetsMixin):
     def patch_grid(self, variable: str = "pcolor", *, as_array: bool = False) -> Any:
         """A patch variable for the whole world, as rows from top (max-pycor) to bottom.
 
-        ``grid[row][col]`` is the patch ``(min_pxcor + col, max_pycor - row)``.
-        ``as_array=True`` returns a numpy array.
+        Parameters
+        ----------
+        variable : str, default "pcolor"
+            Patch variable to read.
+        as_array : bool, default False
+            Return a numpy array instead of nested lists.
+
+        Returns
+        -------
+        list of list or numpy.ndarray
+            ``grid[row][col]`` is the patch ``(min_pxcor + col, max_pycor - row)``.
         """
         grid = self.report(self._GRID.format(var=variable_name(variable)))
         if as_array:

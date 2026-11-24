@@ -7,6 +7,12 @@ Each example calls ``time.sleep()`` once per animation step.  The script runs
 the example as it is, replaces ``time.sleep`` with a recorder that saves the
 NetLogo view (or the whole interface, for the widget example) at each step,
 and assembles the images into ``docs/assets/gifs/<name>.gif`` with Pillow.
+Scripts that never sleep (headless data examples) are recorded at their
+``go()`` and ``tick()`` calls instead ("view-ticks").  Recordings that open
+the window ("interface") should run one per process:
+
+    python tools/record_gifs.py widgets-0x
+
 Needs NetLogo, JPype and Pillow.
 """
 
@@ -38,6 +44,17 @@ RECORDINGS = [
     ("shortest-routes", "advanced/41-shortest-routes.py", "view", 2, 380),
     ("movement", "simple/2-movement.py", "view", 3, 360),
     ("appearance", "simple/3-appearance.py", "view", 2, 360),
+    ("first-agents", "simple/1-first-agents.py", "view", 1, 360),
+    ("ticks-and-output", "simple/4-ticks-and-output.py", "interface", 1, 760),
+    ("widgets-0x", "simple/5-widgets.py", "interface", 1, 760),
+    ("plot-0x", "simple/6-plot.py", "interface", 2, 760),
+    ("external-model", "complexe/27-external-model.py", "view", 1, 380),
+    ("segregation", "advanced/42-segregation.py", "view", 1, 360),
+    ("evacuation", "advanced/43-evacuation.py", "view", 2, 440),
+    ("wealth-tax", "advanced/44-wealth-tax.py", "view", 3, 300),
+    # scripts without time.sleep(): a frame every `every` go() / tick()
+    ("collect-data", "advanced/31-collect-data.py", "view-ticks", 6, 300),
+    ("export-import", "advanced/34-export-import.py", "view-ticks", 1, 360),
 ]
 FRAME_MS = 80          # time per frame in the GIF
 HOLD_MS = 1500         # last frame, and the final pause of each example
@@ -84,6 +101,7 @@ def record(name, script, capture, every, width):
     folder = tempfile.mkdtemp(prefix=f"netlogopy-{name}-")
     recorder = Recorder(capture, every, folder)
     original_init, original_sleep, original_close = core.NetLogo.__init__, time.sleep, core.NetLogo.close
+    original_go, original_tick = core.NetLogo.go, core.NetLogo.tick
 
     def init(self, *args, **kwargs):
         original_init(self, *args, **kwargs)
@@ -94,11 +112,20 @@ def record(name, script, capture, every, width):
             recorder.snap(hold=True)        # the final state, held (not helper sessions)
         original_close(self)
 
-    if capture == "view":
+    def stepped(original):
+        def step(self, *args, **kwargs):
+            original(self, *args, **kwargs)
+            if recorder.session() is self:
+                recorder.sleep(0)
+        return step
+
+    if capture.startswith("view"):
         os.environ["NETLOGOPY_HEADLESS"] = "1"
     else:
         os.environ.pop("NETLOGOPY_HEADLESS", None)
     core.NetLogo.__init__, core.NetLogo.close, time.sleep = init, close, recorder.sleep
+    if capture.endswith("-ticks"):
+        core.NetLogo.go, core.NetLogo.tick = stepped(original_go), stepped(original_tick)
     cwd = os.getcwd()
     try:
         os.chdir(folder)
@@ -106,6 +133,7 @@ def record(name, script, capture, every, width):
     finally:
         os.chdir(cwd)
         core.NetLogo.__init__, core.NetLogo.close, time.sleep = original_init, original_close, original_sleep
+        core.NetLogo.go, core.NetLogo.tick = original_go, original_tick
     return assemble(name, recorder.frames, width)
 
 
@@ -120,7 +148,12 @@ def assemble(name, frames, width):
         images.append(Image.open(path).convert("RGB").resize(size, Image.LANCZOS))
         durations.append(duration)
     durations[-1] = HOLD_MS
-    palette = images[-1].quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+    # one palette for the whole GIF, from frames spread over the recording
+    samples = images[::max(1, len(images) // 6)] + [images[-1]]
+    mosaic = Image.new("RGB", (size[0], size[1] * len(samples)))
+    for index, image in enumerate(samples):
+        mosaic.paste(image, (0, size[1] * index))
+    palette = mosaic.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
     frames_p = [image.quantize(palette=palette, dither=Image.Dither.NONE) for image in images]
     os.makedirs(OUT, exist_ok=True)
     target = os.path.join(OUT, f"{name}.gif")

@@ -6,7 +6,7 @@
 >>> cars[0].forward(10)
 >>> nl.report("mean [xcor] of turtles")
 
-NetLogo runs inside the Python process through JPype (no nl4py, no server).
+NetLogo runs inside the Python process through JPype (no server, no socket).
 The 0.x functions (``run_netlogo``, ``pyturtle``, ``street``...) are still
 available from ``netlogopy`` and ``netlogopy.netlogopy``.
 """

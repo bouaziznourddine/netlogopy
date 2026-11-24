@@ -33,7 +33,7 @@ nl.report(["count turtles", "ticks"])             # several reporters, one call
 ```
 
 NetLogo code is compiled once and the compiled procedure is reused: a repeated
-call takes about 0.1 to 0.3 ms.
+call takes a few hundredths of a millisecond ([measurements](../why.md#speed-of-a-call)).
 
 ## Values
 

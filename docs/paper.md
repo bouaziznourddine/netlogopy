@@ -14,8 +14,7 @@ The paper describes netlogopy's goals (NetLogo's visual agent-based modelling
 together with Python's libraries for optimisation and AI), its functions
 (agents, movement, links, background images, simulation management) and its
 integration with existing NetLogo models, and presents an application to a job
-shop with human operators. That application is
-[example 35](examples.md#job-shop).
+shop with human operators.
 
 The code printed in the paper runs as it is with netlogopy 1.0, including its
 import spelling `from netlogopy.nelogopy import *`; the test suite executes

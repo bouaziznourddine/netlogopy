@@ -44,21 +44,47 @@ def run_experiment(model: PathLike, parameters: Parameters = None,
 
     Parameters
     ----------
-    parameters : ``{"global": [values...]}`` (every combination is run) or an
-        explicit list of ``{"global": value}`` dicts.  Globals are set
-        before ``setup`` runs.
-    reporters : a reporter, a list of reporters, or ``{column: reporter}``.
-    steps : maximum number of ``go`` per run.
-    repetitions : runs per parameter combination.
-    every : record the reporters every ``every`` steps (and at step 0);
-        ``None`` records only the final values.
-    until : NetLogo condition that ends a run early (e.g. ``"not any? turtles"``).
-    seed : runs use ``random-seed seed + run - 1`` for reproducible results.
-    workers : NetLogo workspaces running in parallel threads.
-    progress : ``callback(finished_runs, total_runs)``.
+    model : str or os.PathLike
+        The ``.nlogo`` / ``.nlogox`` file.
+    parameters : mapping or sequence of mapping, optional
+        ``{"global": [values...]}`` (every combination is run, see
+        :func:`parameter_grid`) or an explicit list of ``{"global": value}``
+        dicts.  Globals are set before ``setup`` runs.
+    reporters : str, sequence of str or mapping, default "count turtles"
+        A reporter, a list of reporters, or ``{column: reporter}``.
+    steps : int, default 100
+        Maximum number of ``go`` per run.
+    repetitions : int, default 1
+        Runs per parameter combination.
+    setup, go : str
+        Setup and step commands (default: ``"setup"`` and ``"go"``).
+    every : int, optional
+        Record the reporters every ``every`` steps (and at step 0); ``None``
+        records only the final values.
+    until : str, optional
+        NetLogo condition that ends a run early (e.g. ``"not any? turtles"``).
+    seed : int, optional
+        Runs use ``random-seed seed + run - 1`` for reproducible results.
+    workers : int, default 1
+        NetLogo workspaces running in parallel threads.
+    netlogo_home, java_home, jvm_args
+        As for :class:`NetLogo`.
+    as_dataframe : bool, default False
+        Return a pandas DataFrame instead of a list of dicts.
+    progress : callable, optional
+        ``callback(finished_runs, total_runs)``, called after each run.
 
-    Returns a list of row dicts (``run``, ``repetition``, the parameters,
-    ``step`` and one column per reporter), or a pandas DataFrame.
+    Returns
+    -------
+    list of dict or pandas.DataFrame
+        One row per record: ``run``, ``repetition``, the parameters,
+        ``step`` and one column per reporter.
+
+    Examples
+    --------
+    >>> rows = run_experiment("Wolf Sheep Predation.nlogo",
+    ...                       {"initial-number-sheep": [50, 100]},
+    ...                       {"sheep": "count sheep"}, steps=50, repetitions=3, seed=1)
     """
     if parameters is None:
         combinations: List[Dict[str, Any]] = [{}]

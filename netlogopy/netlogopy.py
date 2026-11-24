@@ -2,7 +2,7 @@
 
 ``from netlogopy.netlogopy import *`` still provides ``run_netlogo``,
 ``pyturtle``, ``street``, ``resize_world``... They now run on the
-:class:`~netlogopy.NetLogo` engine (no nl4py, no base.nls reporters needed),
+:class:`~netlogopy.NetLogo` engine (no Java server, no base.nls reporters needed),
 and also export the new API (``NetLogo``, ``Turtle``, ``Code``...).
 
 ``pyturtle`` needs the ``pyturtles`` breed and ``street`` the ``streets``
