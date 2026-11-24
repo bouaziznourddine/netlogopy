@@ -184,3 +184,35 @@ def test_handles_compare_by_identity(nl):
     assert turtle == nl.turtle(turtle.who) == nl.report(f"turtle {turtle.who}")
     assert len({turtle, nl.turtle(turtle.who)}) == 1
     assert repr(turtle) == f"Turtle({turtle.who})" and isinstance(turtle, Turtle)
+
+
+def test_variables_without_netlogo_code(nl):
+    """Simple reads and writes go through NetLogo's Java API with NetLogo's own checks."""
+    nl.command("crt 1")
+    turtle = nl.turtle(0)
+    before = len(nl._cache)
+    for step in range(50):                     # new values do not compile new code
+        turtle.xcor = step / 10
+        turtle.set(ycor=step / 5, label=f"t{step}")
+    assert len(nl._cache) == before
+    assert (turtle.xcor, turtle.ycor, turtle.label) == (4.9, 9.8, "t49")
+    turtle.color = 200                         # wrapped, as with `set color 200`
+    turtle.heading = 370
+    assert (turtle.color, turtle.heading) == (60, 10)
+    with pytest.raises(NetLogoRuntimeError, match="beyond the world's edge"):
+        turtle.xcor = 1000
+    with pytest.raises(NetLogoRuntimeError, match="not a currently defined shape"):
+        turtle.shape = "no-such-shape"
+    with pytest.raises(NetLogoRuntimeError):
+        turtle.set("who", 5)
+    patch = nl.patch(2, 3)
+    patch.pcolor = 250
+    assert patch.pcolor == 110
+    with pytest.raises(NetLogoRuntimeError):
+        nl.patch(1000, 1000).pcolor = 15
+    breeded = nl.create_turtles(1, "pyturtles")[0]
+    nl.command("ask turtle 0 [ die ]")
+    with pytest.raises(NetLogoRuntimeError):
+        turtle.xcor
+    breeded.xcor = 3.25                         # a breed variable and a built-in one
+    assert breeded.xcor == 3.25

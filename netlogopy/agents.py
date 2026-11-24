@@ -87,6 +87,9 @@ class Agent:
     # -- variables -----------------------------------------------------------------
     def get(self, variable: str) -> Any:
         """Value of one of the agent's variables (built-in or ``-own``)."""
+        value = self.nl._fast_get(self, variable)
+        if value is not self.nl._NO_VALUE:
+            return value
         return self.nl.report(f"[{variable_name(variable)}] of {self.to_netlogo()}")
 
     def set(self, variable: Optional[str] = None, value: Any = None, **variables: Any) -> "Agent":
@@ -95,7 +98,7 @@ class Agent:
         if variable is not None:
             values[variable] = value
         values.update(variables)
-        if values:
+        if values and not self.nl._fast_set(self, values):
             self.nl.command(f"ask {self.to_netlogo()} [ {assignments(values)} ]")
         return self
 

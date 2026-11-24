@@ -11,6 +11,10 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   [JPype](https://jpype.readthedocs.io): no Java server, no socket, no port.
   Compiled NetLogo code is cached, so a repeated call takes a few hundredths of a millisecond
   instead of the 3 to 5 ms needed to compile it every time.
+- **Agent variables without NetLogo code**: reading or writing a variable of a
+  turtle or a patch (`turtle.xcor = x`, `patch.pcolor`, `agent.set(...)`) uses
+  NetLogo's Java API directly, with NetLogo's own checks, so a new value no
+  longer compiles a new command (about 0.05 ms instead of 3 to 5 ms).
 - **`NetLogo` class**: a session on a model, in the NetLogo window (`gui=True`)
   or headless (default). Any number of headless sessions can run in one process,
   in parallel threads.

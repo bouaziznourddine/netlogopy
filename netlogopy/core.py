@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from . import _java
 from .agents import Agent, Link, Patch, Turtle, assignments, variable_name
-from .convert import from_java, to_netlogo
+from .convert import Code, from_java, to_netlogo
 from .errors import NetLogoCompileError, NetLogoError, NetLogoRuntimeError
 from .widgets import WidgetsMixin
 
@@ -205,6 +205,7 @@ class NetLogo(WidgetsMixin):
         self._lock = threading.RLock()
         self._cache: "OrderedDict[Tuple[bool, str], Any]" = OrderedDict()
         self._owner: Any = None
+        self._patch_class: Any = None
         self._singulars: Dict[str, str] = {}
         self._handle: Optional[_java.WorkspaceHandle] = None
         self._runner: Optional[_BackgroundRun] = None
@@ -361,6 +362,89 @@ class NetLogo(WidgetsMixin):
             self._ws.runCompiledCommands(self._job_owner(), procedure)
         except self._java_exception as exc:
             raise _error_from_java(exc, source) from None
+
+    # ─── agent variables through NetLogo's Java API ──────────────────────────
+    # Reading or writing one variable of one agent does not need NetLogo code:
+    # `agent.setVariable(index, value)` is what NetLogo's own `set` runs, with
+    # the same checks (colour wrapping, heading, world edges, shapes...).  It
+    # avoids compiling a new command for every new value.  Anything else
+    # (links, lists, agents as values, an error) goes through NetLogo code.
+    _NO_VALUE = object()
+
+    def _java_agent(self, agent: Any) -> Any:
+        from .agents import Patch, Turtle
+        world = self._ws.world()
+        if isinstance(agent, Turtle):
+            return world.getTurtle(agent.who)
+        if isinstance(agent, Patch):
+            if (world.minPxcor() <= agent.pxcor <= world.maxPxcor()
+                    and world.minPycor() <= agent.pycor <= world.maxPycor()):
+                return world.fastGetPatchAt(agent.pxcor, agent.pycor)
+        return None
+
+    def _variable_index(self, java_agent: Any, name: str) -> int:
+        from .agents import variable_name
+        world = self._ws.world()
+        upper = variable_name(name).upper()
+        if isinstance(java_agent, self._java_patch_class()):
+            return int(world.patchesOwnIndexOf(upper))
+        index = int(world.turtlesOwnIndexOf(upper))
+        if index < 0:
+            index = int(world.breedsOwnIndexOf(java_agent.getBreed(), upper))
+        return index
+
+    def _java_patch_class(self) -> Any:
+        if self._patch_class is None:
+            import jpype
+            self._patch_class = jpype.JClass("org.nlogo.agent.Patch")
+        return self._patch_class
+
+    def _fast_get(self, agent: Any, name: str) -> Any:
+        """Value of one variable, or _NO_VALUE when NetLogo code is needed."""
+        with self._lock:
+            self._check_open()
+            try:
+                java_agent = self._java_agent(agent)
+                if java_agent is None:
+                    return self._NO_VALUE
+                index = self._variable_index(java_agent, name)
+                if index < 0:
+                    return self._NO_VALUE
+                return from_java(java_agent.getVariable(index), self)
+            except self._java_exception:
+                return self._NO_VALUE
+
+    def _fast_set(self, agent: Any, values: Dict[str, Any]) -> bool:
+        """Set simple values (numbers, strings, booleans); False when NetLogo code is needed."""
+        import jpype
+        converted = []
+        for value in values.values():
+            if isinstance(value, bool):
+                converted.append(jpype.JObject(value, "java.lang.Boolean"))
+            elif isinstance(value, (int, float)) and not isinstance(value, Code):
+                converted.append(jpype.JObject(float(value), "java.lang.Double"))
+            elif isinstance(value, str) and not isinstance(value, Code):
+                converted.append(jpype.JObject(value, "java.lang.String"))
+            else:
+                return False
+        with self._lock:
+            self._check_open()
+            try:
+                java_agent = self._java_agent(agent)
+                if java_agent is None:
+                    return False
+                indexes = [self._variable_index(java_agent, name) for name in values]
+                if min(indexes) < 0:
+                    return False
+                world = self._ws.world()
+                with jpype.synchronized(world):
+                    for index, value in zip(indexes, converted):
+                        java_agent.setVariable(index, value)
+            except self._java_exception:
+                return False                       # NetLogo code reports the error
+            if self.gui:
+                self._ws.requestDisplayUpdate(False)
+            return True
 
     def report(self, reporter: Union[str, Sequence[str]]) -> Any:
         """Evaluate a NetLogo reporter and return its value converted to Python.
