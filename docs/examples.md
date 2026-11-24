@@ -46,9 +46,10 @@ NetLogo model itself is written by the Python script.
 
 [`advanced/40-q-learning.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/40-q-learning.py)
 - NetLogo is the environment (the maze, the moves), Python is the learner (a
-Q-learning table, rewards, exploration). Every 60 episodes the robot shows,
-pen down, what it has learned: after 120 episodes it takes the shortest route,
-32 moves.
+Q-learning table, rewards, exploration). Every 20 episodes the robot shows,
+pen down, what it has learned; until it has learned enough it goes round in
+circles and the demonstration stops. After 120 episodes it takes the shortest
+route, 32 moves.
 
 ??? example "Code"
 
@@ -234,6 +235,7 @@ the buttons.
 | | [`advanced/32-experiment.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/32-experiment.py) | a parameter sweep with `run_experiment()` on 4 workers |
 | | [`advanced/33-two-models.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/33-two-models.py) | two models at once, in two threads |
 | ![](assets/gifs/export-import.gif){ width="160" } | [`advanced/34-export-import.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/34-export-import.py) | export the view, the plots and the world; restore the world |
+| ![](assets/gifs/draw-netlogopy.gif){ width="160" } | [`advanced/45-draw-netlogopy.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/45-draw-netlogopy.py) | nine turtles write NETLOGOPY with their pens, moved by Python along the strokes |
 
 ??? example "Code: advanced/28-quickstart.py"
 
@@ -275,6 +277,12 @@ the buttons.
 
     ```python title="advanced/34-export-import.py"
     --8<-- "Examples/advanced/34-export-import.py"
+    ```
+
+??? example "Code: advanced/45-draw-netlogopy.py"
+
+    ```python title="advanced/45-draw-netlogopy.py"
+    --8<-- "Examples/advanced/45-draw-netlogopy.py"
     ```
 
 ## The 0.x API

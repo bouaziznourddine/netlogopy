@@ -4,8 +4,9 @@ Example 40 : Reinforcement learning with NetLogo as the environment
 A robot learns by trial and error (Q-learning) to cross a maze.  NetLogo is
 the environment: it holds the maze, moves the robot and says where it is;
 Python holds the learning: the table of action values, the reward and the
-exploration.  Every 60 episodes the robot shows, pen down, what it has
-learned so far.
+exploration.  Every 20 episodes the robot shows, pen down, what it has
+learned so far; while it has not learned enough it goes round in circles, and
+the demonstration stops as soon as it comes back to a square it has visited.
 
 The same loop works with any learning library (a neural network instead of
 the table, Stable-Baselines3 with a gym wrapper...).
@@ -32,7 +33,7 @@ MAZE = [                     # # wall, S start, G goal (top row first)
     "###############",
 ]
 ACTIONS = [0, 90, 180, 270]                  # headings: north, east, south, west
-EPISODES, MAX_STEPS = 300, 250
+EPISODES, MAX_STEPS, SHOW_EVERY = 160, 250, 20
 ALPHA, GAMMA = 0.5, 0.95
 
 
@@ -69,7 +70,7 @@ def episode(nl, robot, start, q, epsilon, rng, show=False):
     if show:
         nl.clear_drawing()
         robot.pen_down()
-    state, total = start, 0.0
+    state, total, visited = start, 0.0, {start}
     for moves in range(1, MAX_STEPS + 1):
         values = q.setdefault(state, [0.0] * len(ACTIONS))
         action = rng.randrange(len(ACTIONS)) if rng.random() < epsilon else values.index(max(values))
@@ -80,6 +81,9 @@ def episode(nl, robot, start, q, epsilon, rng, show=False):
         state, total = new_state, total + reward
         if show:
             time.sleep(0.02)
+            if new_state in visited:                          # going round in circles
+                break
+            visited.add(new_state)
         if done:
             break
     return moves, done
@@ -94,10 +98,10 @@ if __name__ == "__main__":
         for number in range(1, EPISODES + 1):
             epsilon = max(0.05, 1 - number / (0.7 * EPISODES))   # explore less and less
             moves, reached = episode(nl, robot, start, q, epsilon, rng)
-            if number % 60 == 0:
+            if number % SHOW_EVERY == 0:
                 shown, ok = episode(nl, robot, start, q, 0.0, rng, show=True)
                 print(f"episode {number:3d}: exploring took {moves:3d} moves; "
-                      f"what it learned: {'goal in ' + str(shown) + ' moves' if ok else 'goal not reached'}")
+                      f"what it learned: {'goal in ' + str(shown) + ' moves' if ok else 'stuck after ' + str(shown) + ' moves'}")
                 time.sleep(0.5)
         print(f"{len(q)} states learned; shortest route found: {shown} moves")
         time.sleep(2)

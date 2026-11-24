@@ -1,4 +1,6 @@
-<h1 align="center">netlogopy</h1>
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/draw-netlogopy.gif" width="720" alt="netlogopy: nine NetLogo turtles, moved by Python, write the word NETLOGOPY">
+</h1>
 
 <p align="center">
   <b>Run NetLogo models from Python, and let Python decide, optimise, learn and measure inside the simulation.</b>
@@ -13,9 +15,9 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/python-policy.gif" height="230" alt="An epidemic in NetLogo, vaccine doses given by Python">
-  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/q-learning.gif" height="230" alt="A robot learns to cross a NetLogo maze with Q-learning in Python">
-  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/evacuation.gif" height="230" alt="A crowd leaves a hall, exits chosen by Python">
+  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/python-policy.gif" width="32%" alt="An epidemic in NetLogo, vaccine doses given by Python">
+  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/q-learning.gif" width="32%" alt="A robot learns to cross a NetLogo maze with Q-learning in Python">
+  <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/shortest-routes.gif" width="32%" alt="Cars routed by Python on a NetLogo road network">
 </p>
 
 [NetLogo](https://ccl.northwestern.edu/netlogo/) is the simplest way to build
@@ -130,6 +132,10 @@ optimises, learns or measures.
 | <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/wealth-tax.gif" width="260" alt="Wealth tax"> | **[Inequality and a wealth tax](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/44-wealth-tax.py)**: a Python controller sets the tax from the Gini coefficient; 0.28 instead of 0.42. |
 | <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/calibrate-model.gif" width="260" alt="Calibration"> | **[Calibrating a model](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/39-calibrate-model.py)**: a bisection over 112 Fire runs in 4 parallel sessions finds the density that burns half the forest. |
 | <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/shortest-routes.gif" width="260" alt="Routing"> | **[Routing cars](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/41-shortest-routes.py)**: Dijkstra in Python on the NetLogo road network, rerouting when a road closes. |
+| <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/fire-with-python-agents.gif" width="260" alt="Fire model"> | **[Python agents in the Fire model](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/complexe/Fire/Fire.py)**: the NetLogo Models Library model, with two cars and a street driven by Python. |
+| <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/network-layout.gif" width="260" alt="Network layout"> | **[Networks and layouts](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/30-network-layout.py)**: a network grown by Python (preferential attachment), laid out by NetLogo's spring layout, nodes coloured by degree. |
+| <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/add-widgets.gif" width="260" alt="Interface widgets"> | **[Interface widgets added from Python](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/36-add-widgets.py)**: sliders, switches, buttons, monitors and a plot added to the NetLogo window, then pressed and changed by Python. |
+| <img src="https://raw.githubusercontent.com/bouaziznourddine/netlogopy/main/docs/assets/gifs/draw-netlogopy.gif" width="260" alt="Drawing"> | **[Agents that write NETLOGOPY](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/45-draw-netlogopy.py)**: nine turtles, one per letter, moved by Python along the strokes, pen down. |
 
 More, with the code of each one (agents, patches, networks, widgets, data
 collection, parameter sweeps, background runs, existing models such as Wolf

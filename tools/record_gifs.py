@@ -40,7 +40,7 @@ RECORDINGS = [
     ("start-pause-stop", "advanced/37-start-pause-stop.py", "view", 2, 340),
     ("python-policy", "advanced/38-python-policy.py", "view", 6, 320),
     ("calibrate-model", "advanced/39-calibrate-model.py", "view", 1, 380),
-    ("q-learning", "advanced/40-q-learning.py", "view", 3, 340),
+    ("q-learning", "advanced/40-q-learning.py", "view", 1, 340),
     ("shortest-routes", "advanced/41-shortest-routes.py", "view", 2, 380),
     ("movement", "simple/2-movement.py", "view", 3, 360),
     ("appearance", "simple/3-appearance.py", "view", 2, 360),
@@ -52,6 +52,7 @@ RECORDINGS = [
     ("segregation", "advanced/42-segregation.py", "view", 1, 360),
     ("evacuation", "advanced/43-evacuation.py", "view", 2, 440),
     ("wealth-tax", "advanced/44-wealth-tax.py", "view", 3, 300),
+    ("draw-netlogopy", "advanced/45-draw-netlogopy.py", "view", 1, 720),
     # scripts without time.sleep(): a frame every `every` go() / tick()
     ("collect-data", "advanced/31-collect-data.py", "view-ticks", 6, 300),
     ("export-import", "advanced/34-export-import.py", "view-ticks", 1, 360),

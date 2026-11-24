@@ -74,7 +74,8 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   vaccination policy in an epidemic (38), calibration with an optimiser (39),
   reinforcement learning in a maze (40), routing on a road network (41),
   Schelling segregation measured by Python (42), a room evacuated with exits
-  chosen by Python (43) and a wealth tax set by a Python controller (44).
+  chosen by Python (43) and a wealth tax set by a Python controller (44), and nine turtles that
+  write NETLOGOPY (45).
 - A PyPI publishing workflow (trusted publishing on a GitHub release).
 - The 26 one-function examples of `Examples/simple` are merged into six
   (first agents, movement, appearance, ticks and output, widgets, plots),
