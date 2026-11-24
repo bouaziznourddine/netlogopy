@@ -33,6 +33,9 @@ RECORDINGS = [
     ("add-widgets", "advanced/36-add-widgets.py", "interface", 4, 760),
     ("start-pause-stop", "advanced/37-start-pause-stop.py", "view", 2, 340),
     ("python-policy", "advanced/38-python-policy.py", "view", 6, 320),
+    ("calibrate-model", "advanced/39-calibrate-model.py", "view", 1, 380),
+    ("q-learning", "advanced/40-q-learning.py", "view", 3, 340),
+    ("shortest-routes", "advanced/41-shortest-routes.py", "view", 2, 380),
     ("movement", "simple/2-movement.py", "view", 3, 360),
     ("appearance", "simple/3-appearance.py", "view", 2, 360),
 ]

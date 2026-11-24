@@ -41,5 +41,8 @@ rows.groupby("density")["burned"].mean()
 The model and Python share the same process, so any Python library can take
 part in the simulation: an optimiser re-plans a schedule, a trained model
 decides the agents' moves, scipy fits a distribution to the agents' state...
-The [job shop example](../examples.md#job-shop) re-optimises the machine
-queues from Python every 20 ticks.
+Examples: the [job shop](../examples.md#job-shop) re-optimises the machine
+queues every 20 ticks, a [bisection](../examples.md#calibrate) calibrates the
+Fire model, a [Q-learning agent](../examples.md#q-learning) learns a NetLogo
+maze, [Dijkstra](../examples.md#routes) routes cars on a NetLogo road network,
+and a [vaccination policy](../examples.md#python-policy) fights an epidemic.

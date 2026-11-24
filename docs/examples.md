@@ -48,6 +48,38 @@ NetLogo model itself is written by the Python script.
 | random doses | 67 | 112 |
 | doses to the most exposed | 30 | 50 |
 
+### Reinforcement learning in a NetLogo maze { #q-learning }
+
+![A robot learns to cross a maze](assets/gifs/q-learning.gif){ .demo width="340" }
+
+[`advanced/40-q-learning.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/40-q-learning.py)
+- NetLogo is the environment (the maze, the moves), Python is the learner (a
+Q-learning table, rewards, exploration). Every 60 episodes the robot shows,
+pen down, what it has learned: after 120 episodes it takes the shortest route,
+32 moves.
+
+### Calibrating a model with a Python optimiser { #calibrate }
+
+![Fire at the calibrated density](assets/gifs/calibrate-model.gif){ .demo width="380" }
+
+[`advanced/39-calibrate-model.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/39-calibrate-model.py)
+- which tree density makes the fire burn half of the forest? A bisection in
+Python proposes densities; each one is scored by 16 runs of the Fire model in
+4 parallel headless sessions (112 runs in about 10 s). It finds 60.1 %, close
+to the percolation threshold of the square lattice (about 59 %), where the
+fire goes from dying out to crossing the forest. The model then runs in the
+window at that density.
+
+### Routing cars on a road network { #routes }
+
+![Cars routed by Python, rerouted around a closed road](assets/gifs/shortest-routes.gif){ .demo width="380" }
+
+[`advanced/41-shortest-routes.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/41-shortest-routes.py)
+- the intersections are turtles and the roads links; Python reads the network
+in one call, computes the shortest routes with Dijkstra and gives them to the
+cars. At tick 25 a road on a car's route is closed (in red) and Python
+reroutes the cars that were going to use it.
+
 ### Start, pause, change and stop { #start-pause-stop }
 
 ![Wolf Sheep run in the background](assets/gifs/start-pause-stop.gif){ .demo width="340" }

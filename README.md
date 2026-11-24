@@ -444,7 +444,7 @@ Changes in 1.0: `n.report()` returns Python values instead of strings, and
 |---|---|
 | [Examples/simple](Examples/simple) | the 0.x API: 1 first agents, 2 movement, 3 appearance and drawing, 4 ticks and output, 5 widgets, 6 plots |
 | [Examples/complexe](Examples/complexe) | 27: controlling an existing model; Fire and Wolf Sheep with Python agents |
-| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation), 36 interface widgets added from Python, 37 start, pause and stop a running model, 38 a Python vaccination policy in an epidemic |
+| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation), 36 interface widgets added from Python, 37 start, pause and stop a running model, 38 a Python vaccination policy in an epidemic, 39 calibrating a model with an optimiser, 40 reinforcement learning in a maze, 41 shortest routes on a road network |
 
 ```bash
 python Examples/advanced/28-quickstart.py

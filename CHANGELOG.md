@@ -65,11 +65,12 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `PyTurtle` and `Street` class names, and `pyturtle.fields` (the extra
   attributes as a live dict).
 - Tests against a real NetLogo, a GitHub Actions workflow, type information
-  (`py.typed`), and eleven new examples (`Examples/advanced`), including the
+  (`py.typed`), and fourteen new examples (`Examples/advanced`), including the
   job shop with human operators presented at SW25 (simulation and
   re-optimisation of the machine queues), interface widgets added from
   Python, a background run paused and changed by Python (37), and a Python
-  vaccination policy in an epidemic (38).
+  vaccination policy in an epidemic (38), calibration with an optimiser (39),
+  reinforcement learning in a maze (40) and routing on a road network (41).
 - The 26 one-function examples of `Examples/simple` are merged into six
   (first agents, movement, appearance, ticks and output, widgets, plots),
   which still show every 0.x function.
