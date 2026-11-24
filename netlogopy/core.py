@@ -21,6 +21,7 @@ from . import _java
 from .agents import Agent, Link, Patch, Turtle, assignments, variable_name
 from .convert import from_java, to_netlogo
 from .errors import NetLogoCompileError, NetLogoError, NetLogoRuntimeError
+from .widgets import WidgetsMixin
 
 __all__ = ["NetLogo", "Globals", "BUNDLED_MODEL", "BUNDLED_MODEL_NLOGOX", "bundled_model"]
 
@@ -156,7 +157,7 @@ class _BackgroundRun(threading.Thread):
             self.error = exc
 
 
-class NetLogo:
+class NetLogo(WidgetsMixin):
     """A NetLogo model running inside this Python process.
 
     Parameters

@@ -260,6 +260,30 @@ nl.import_pcolors("map.png")
 nl.import_drawing("background.png")
 ```
 
+### Adding interface widgets
+
+In the NetLogo window, Python can add the items of NetLogo's *Add* menu. Each
+slider, switch, chooser and input becomes a global of the model:
+
+```python
+with NetLogo(gui=True, setup=True) as nl:
+    nl.add_slider("walkers", 1, 200, 50, 1)
+    nl.add_switch("trails", True)
+    nl.add_chooser("walker-color", ["red", "blue"], 0)
+    nl.add_input("label-text", "hello")
+    nl.add_button("walk", "rt random 50 - 25 fd 1", agents="turtles", forever=True)
+    nl.add_monitor("count turtles", "walkers")
+    nl.add_plot("Spread", {"distance": "plot mean [distancexy 0 0] of turtles"})
+    nl.add_note("Added by Python")
+    nl.globals["walkers"] = 80          # set it like any widget
+    nl.press_button("walk")             # click it (again to stop a forever button)
+```
+
+Widgets go in a column to the right of the model's own widgets, unless `x=`
+and `y=` are given. The model keeps its agents and ticks when they are added.
+They last for the session (File > Save As in NetLogo keeps them), and need the
+window: headless sessions raise `NetLogoError`.
+
 ### Plots, output, files and layouts
 
 ```python
@@ -339,6 +363,7 @@ the session. With the `NetLogo` class, call `nl.import_shapes()` (or
 | Plots | `plot`, `plotxy`, `histogram`, `set_current_plot`, `set_current_plot_pen`, `create_temporary_plot_pen`, `clear_plot`, `clear_all_plots`, `set_plot_pen_color`, `set_plot_pen_mode`, `set_plot_pen_interval`, `plot_pen_up`, `plot_pen_down`, `plot_pen_reset`, `set_histogram_num_bars`, `set_plot_x_range`, `set_plot_y_range`, `auto_plot_on`, `auto_plot_off`, `setup_plots`, `update_plots`, `plot_name`, `plot_pen_exists`, `plot_x_range`, `plot_y_range`, `autoplot` (NetLogo 7) |
 | Layouts | `layout_circle`, `layout_spring`, `layout_radial`, `layout_tutte` |
 | Observer | `watch`, `follow`, `ride`, `reset_perspective`, `inspect`, `stop_inspecting` |
+| Interface widgets (window) | `add_button`, `add_slider`, `add_switch`, `add_chooser`, `add_input`, `add_monitor`, `add_plot`, `add_output`, `add_note`, `press_button` |
 | Timer, clock | `reset_timer`, `timer`, `date_and_time`, `beep` |
 | Mouse, dialogs (window) | `mouse_down`, `mouse_inside`, `mouse_xcor`, `mouse_ycor`, `user_message`, `user_input`, `user_yes_or_no`, `user_one_of`, `user_file`, `user_new_file`, `user_directory` |
 
@@ -405,7 +430,7 @@ Changes in 1.0: `n.report()` returns Python values instead of strings, and
 |---|---|
 | [Examples/simple](Examples/simple) | 1–26: one 0.x function per script (turtles, streets, movement, colors, pen, ticks, slider, switch, monitor, plot...) |
 | [Examples/complexe](Examples/complexe) | 27: controlling an existing model; Fire and Wolf Sheep with Python agents |
-| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation) |
+| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation), 36 interface widgets added from Python |
 
 ```bash
 python Examples/advanced/28-quickstart.py
@@ -472,7 +497,19 @@ More references: [paper/references.bib](paper/references.bib).
 
 ## License
 
-[MIT License](LICENSE).
+netlogopy is under the [MIT License](LICENSE).
+
+It does not include NetLogo: it uses the NetLogo you install, which is free
+software under the GNU GPL (version 2 or later), and JPype (Apache 2.0). MIT
+code may be combined with GPL code, so using netlogopy with NetLogo is allowed,
+for research and for commercial work. If you distribute a program that bundles
+NetLogo itself, the GPL applies to that distribution.
+
+The two example models in `Examples/complexe` (Fire and Wolf Sheep Predation)
+come from the NetLogo Models Library: Copyright 1997 Uri Wilensky, under
+[CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) (credit
+the author, no commercial use, share alike); their Info tab gives the full
+notice. The SW25 paper in `paper/` is the authors' publication.
 
 ## Developed by
 

@@ -45,6 +45,9 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `import_shapes()` copies the shapes of the bundled model (or of any model)
   into the open model; `run_netlogo()` does it for a model of your own, so
   `pyturtle(shape="person_0")` works in every model.
+- **Interface widgets from Python** (NetLogo window): `add_button`,
+  `add_slider`, `add_switch`, `add_chooser`, `add_input`, `add_monitor`,
+  `add_plot`, `add_output`, `add_note`, and `press_button` to click a button.
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
