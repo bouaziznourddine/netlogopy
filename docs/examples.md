@@ -226,60 +226,174 @@ the buttons.
 
 ## The `NetLogo` class
 
-| | Script | Shows |
-|---|---|---|
-| ![](assets/gifs/quickstart.gif){ width="160" } | [`advanced/28-quickstart.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/28-quickstart.py) | agents as objects, `command`, `report`, typed results |
-| ![](assets/gifs/patches-diffuse.gif){ width="160" } | [`advanced/29-patches-grid.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/29-patches-grid.py) | a whole patch variable as a grid, `diffuse` |
-| ![](assets/gifs/network-layout.gif){ width="160" } | [`advanced/30-network-layout.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/30-network-layout.py) | a scale-free network, `layout_spring`, degrees |
-| ![](assets/gifs/collect-data.gif){ width="160" } | [`advanced/31-collect-data.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/31-collect-data.py) | time series with `collect()`, headless, pandas |
-| | [`advanced/32-experiment.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/32-experiment.py) | a parameter sweep with `run_experiment()` on 4 workers |
-| | [`advanced/33-two-models.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/33-two-models.py) | two models at once, in two threads |
-| ![](assets/gifs/export-import.gif){ width="160" } | [`advanced/34-export-import.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/34-export-import.py) | export the view, the plots and the world; restore the world |
-| ![](assets/gifs/draw-netlogopy.gif){ width="160" } | [`advanced/45-draw-netlogopy.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/45-draw-netlogopy.py) | nine turtles write NETLOGOPY with their pens, moved by Python along the strokes |
+One example per part of the API, from the first session to saving the
+model state. Each one runs in a few seconds.
 
-??? example "Code: advanced/28-quickstart.py"
+### Quick start { #quickstart }
+
+![Eight cars driven by Python](assets/gifs/quickstart.gif){ .demo width="340" }
+
+[`advanced/28-quickstart.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/28-quickstart.py):
+eight cars start at the centre with evenly spread headings and drive a
+circle, moved by Python (`car.forward(0.5).right(3)`: the methods can be
+chained). Python then makes the first car the blue "leader", asks which cars
+are near it, and reads NetLogo values as Python values: a float for
+`mean [xcor] of pyturtles`, a list for several reporters at once, a `Turtle`
+for `min-one-of`. A NetLogo command finally paints green the cars east of
+the centre.
+
+**Uses** `NetLogo(gui=True)`, `create_turtles`, `Turtle.forward` / `right`,
+turtle properties (`color`, `label`, `xy`, `heading`), `in_radius`, `report`,
+`command`, `count`.
+
+??? example "Code"
 
     ```python title="advanced/28-quickstart.py"
     --8<-- "Examples/advanced/28-quickstart.py"
     ```
 
-??? example "Code: advanced/29-patches-grid.py"
+### Patches as a grid { #patches-grid }
+
+![A bright square diffused by NetLogo](assets/gifs/patches-diffuse.gif){ .demo width="300" }
+
+[`advanced/29-patches-grid.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/29-patches-grid.py):
+Python builds a picture as a list of rows (a bright square in the middle)
+and writes it into `pcolor` for the whole world in one call. NetLogo's
+`diffuse` spreads it over 30 ticks; Python reads the grid back, also in one
+call, and measures it: 377 patches are still brighter than 0.5. Patches are
+agents too: the corner patch gets a colour and a label, and Python lists its
+neighbours.
+
+**Uses** `set_patch_grid`, `diffuse`, `patch_grid` (lists, or NumPy arrays
+with `as_array=True`), `patch`, `Patch.neighbors`, `count`.
+
+??? example "Code"
 
     ```python title="advanced/29-patches-grid.py"
     --8<-- "Examples/advanced/29-patches-grid.py"
     ```
 
-??? example "Code: advanced/30-network-layout.py"
+### Networks and layouts { #network-layout }
+
+![A network laid out by the spring layout](assets/gifs/network-layout.gif){ .demo width="320" }
+
+[`advanced/30-network-layout.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/30-network-layout.py):
+Python grows a network of 25 nodes by preferential attachment (each new node
+links to two nodes chosen in proportion to their degree); NetLogo places
+them on a circle, then relaxes the spring layout step by step. The degree of
+every node is read in one call: the node size follows the degree and the
+hubs (6 links or more) turn red. The run prints 45 links and a hub with 13
+links.
+
+**Uses** `create_turtles`, `create_link`, `Turtle.create_link_with`,
+`layout_circle`, `layout_spring`, `of`, `Turtle.link_neighbors`.
+
+??? example "Code"
 
     ```python title="advanced/30-network-layout.py"
     --8<-- "Examples/advanced/30-network-layout.py"
     ```
 
-??? example "Code: advanced/31-collect-data.py"
+### Time series, headless { #collect-data }
+
+![Wolf Sheep Predation, recorded at every step](assets/gifs/collect-data.gif){ .demo width="300" }
+
+[`advanced/31-collect-data.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/31-collect-data.py):
+Wolf Sheep Predation runs without a window, with grass, 40 wolves and a
+fixed random seed. `collect()` records three reporters at every step (sheep,
+wolves, grass) for 300 steps, or until one species is gone, and returns a
+dict of lists, or a pandas DataFrame. In this run the sheep go between 98
+and 242 and the wolves between 21 and 107, in cycles. The animation is the
+view of the headless run, saved by the documentation tools.
+
+**Uses** `NetLogo(model)` (headless), `globals`, `random_seed`, `collect`.
+
+??? example "Code"
 
     ```python title="advanced/31-collect-data.py"
     --8<-- "Examples/advanced/31-collect-data.py"
     ```
 
-??? example "Code: advanced/32-experiment.py"
+### A parameter sweep { #experiment }
+
+![The Fire model at 55, 60 and 65 % density](assets/gifs/experiment.gif){ .demo width="300" }
+
+[`advanced/32-experiment.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/32-experiment.py):
+how much of the forest burns, for each tree density? `run_experiment()` runs
+the Fire model for 7 densities, 3 times each (21 runs), on 4 headless
+sessions in parallel, and stops each run as soon as the fire is out, like
+BehaviorSpace. The script then shows in the window one fire below, near and
+above the threshold (the animation: 55, 60 and 65 %).
+
+| Density | 50 | 55 | 58 | 60 | 62 | 65 | 70 |
+|---|---|---|---|---|---|---|---|
+| Forest burned (mean of 3 runs) | 9 % | 13 % | 36 % | 55 % | 87 % | 91 % | 97 % |
+
+Between 55 and 62 % the answer jumps: this is the percolation threshold of
+the square lattice (about 59 %).
+
+**Uses** `run_experiment` (`parameters`, `repetitions`, `until`, `seed`,
+`workers`, `progress`), then `globals`, `setup`, `go`, `report`.
+
+??? example "Code"
 
     ```python title="advanced/32-experiment.py"
     --8<-- "Examples/advanced/32-experiment.py"
     ```
 
-??? example "Code: advanced/33-two-models.py"
+### Several models at once { #two-models }
+
+![Fire and Wolf Sheep running at the same time](assets/gifs/two-models.gif){ .demo width="480" }
+
+[`advanced/33-two-models.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/33-two-models.py):
+two different models, Fire and Wolf Sheep Predation, run at the same time in
+the same Python process, each in its own thread and its own headless
+session. The animation puts their two views side by side as they advance.
+One process can hold any number of headless sessions, and one NetLogo window.
+
+**Uses** `NetLogo(model)` in a `threading.Thread`, `globals`, `go`, `report`
+with a list of reporters.
+
+??? example "Code"
 
     ```python title="advanced/33-two-models.py"
     --8<-- "Examples/advanced/33-two-models.py"
     ```
 
-??? example "Code: advanced/34-export-import.py"
+### Save and restore { #export-import }
+
+![Thirty cars, then the world saved and restored](assets/gifs/export-import.gif){ .demo width="300" }
+
+[`advanced/34-export-import.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/34-export-import.py):
+thirty cars wander for 10 ticks while Python plots their mean position.
+Python then exports an image of the view, the plot as CSV and the whole
+model state, clears everything, imports the state again and checks that
+every car is back at the same place, with the same ticks.
+
+**Uses** `create_turtles` with `Code("random-xcor")`, `ask`, `plot`,
+`export_view`, `export_plot`, `export_world`, `clear_all`, `import_world`,
+`of`.
+
+??? example "Code"
 
     ```python title="advanced/34-export-import.py"
     --8<-- "Examples/advanced/34-export-import.py"
     ```
 
-??? example "Code: advanced/45-draw-netlogopy.py"
+### Agents that write NETLOGOPY { #draw-netlogopy }
+
+![Nine turtles write NETLOGOPY](assets/gifs/draw-netlogopy.gif){ .demo width="560" }
+
+[`advanced/45-draw-netlogopy.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/45-draw-netlogopy.py):
+nine turtles, one per letter, write the word together in 93 ticks. Each
+letter is a list of strokes on a 4 x 6 grid, held in Python; at every tick
+Python moves each turtle 0.6 patch further along its strokes, pen down on a
+stroke and pen up between two strokes. NetLogo draws the lines.
+
+**Uses** `resize_world`, `set_patch_size`, `create_turtles`, `pen_size`,
+`pen_down` / `pen_up`, `facexy`, `setxy`, `hide_turtle`.
+
+??? example "Code"
 
     ```python title="advanced/45-draw-netlogopy.py"
     --8<-- "Examples/advanced/45-draw-netlogopy.py"
@@ -287,46 +401,112 @@ the buttons.
 
 ## The 0.x API
 
-| | Script | Functions |
-|---|---|---|
-| ![](assets/gifs/first-agents.gif){ width="160" } | [`simple/1-first-agents.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/1-first-agents.py) | `run_netlogo`, `resize_world`, `set_background`, `pyturtle`, `street` |
-| ![](assets/gifs/movement.gif){ width="160" } | [`simple/2-movement.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/2-movement.py) | `fd`, `bk`, `rt`, `lt`, `set_heading`, `setxy`, `move_to`, `face_to`, `getxyturtle`, `distanceto`, `distancebetween` |
-| ![](assets/gifs/appearance.gif){ width="160" } | [`simple/3-appearance.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/3-appearance.py) | `set_color`, `set_size`, `set_shape`, `set_label`, `hideturtle`, `showturtle`, `pen_down`, `pen_up`, `stamp` |
-| ![](assets/gifs/ticks-and-output.gif){ width="160" } | [`simple/4-ticks-and-output.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/4-ticks-and-output.py) | `do_tick`, `get_ticks`, `count_pyturtles`, `netlogoshow`, `nl_output_print`, `run_command` |
-| ![](assets/gifs/widgets-0x.gif){ width="160" } | [`simple/5-widgets.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/5-widgets.py) | `get_slider`, `set_slider`, `get_switch`, `set_switch`, `get_chooser`, `set_chooser`, `get_input_box`, `set_input_box`, `get_monitor` |
-| ![](assets/gifs/plot-0x.gif){ width="160" } | [`simple/6-plot.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/6-plot.py) | `set_current_plot`, `create_plot_pen`, `set_plot_pen`, `set_plot_pen_color`, `plot_add`, `plot_xy` |
+The examples of netlogopy 0.x, unchanged: scripts written for 0.x keep
+working with 1.0 (see [The 0.x API](guide/legacy.md)). They use the bundled
+model and its `pyturtles` and `streets` breeds.
 
-??? example "Code: simple/1-first-agents.py"
+### First agents { #first-agents }
+
+![Two cars and a street](assets/gifs/first-agents.gif){ .demo width="300" }
+
+[`simple/1-first-agents.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/1-first-agents.py):
+opens the bundled model in the NetLogo window, resizes the world, puts an
+image behind it and creates two Python-driven turtles (`pyturtle`) joined by
+a `street`.
+
+**Uses** `run_netlogo`, `resize_world`, `set_background`, `pyturtle`,
+`street`, `close_model`.
+
+??? example "Code"
 
     ```python title="simple/1-first-agents.py"
     --8<-- "Examples/simple/1-first-agents.py"
     ```
 
-??? example "Code: simple/2-movement.py"
+### Moving a turtle { #movement }
+
+![A turtle moves, turns and jumps](assets/gifs/movement.gif){ .demo width="300" }
+
+[`simple/2-movement.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/2-movement.py):
+forward and back, turns, headings, jumps to a point or to another turtle,
+facing a turtle, and the positions and distances read back in Python.
+
+**Uses** `fd`, `bk`, `rt`, `lt`, `set_heading`, `get_heading`, `setxy`,
+`move_to`, `face_to`, `getxyturtle`, `distanceto`, `distancebetween`.
+
+??? example "Code"
 
     ```python title="simple/2-movement.py"
     --8<-- "Examples/simple/2-movement.py"
     ```
 
-??? example "Code: simple/3-appearance.py"
+### Appearance and drawing { #appearance }
+
+![Colours, shapes, labels and the pen](assets/gifs/appearance.gif){ .demo width="300" }
+
+[`simple/3-appearance.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/3-appearance.py):
+colours, sizes, shapes and labels of a turtle, hiding and showing it, and
+drawing with its pen (lines and stamps), then clearing the drawing.
+
+**Uses** `set_color`, `get_color`, `set_size`, `get_size`, `set_shape`,
+`set_label`, `hideturtle`, `showturtle`, `pen_down`, `pen_up`, `stamp`,
+`clear_drawing`.
+
+??? example "Code"
 
     ```python title="simple/3-appearance.py"
     --8<-- "Examples/simple/3-appearance.py"
     ```
 
-??? example "Code: simple/4-ticks-and-output.py"
+### Ticks, counting and output { #ticks-and-output }
+
+![Ticks and messages in the interface](assets/gifs/ticks-and-output.gif){ .demo }
+
+[`simple/4-ticks-and-output.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/4-ticks-and-output.py):
+advances the simulation clock, counts the Python turtles, and writes to the
+command center and to the output area of the interface.
+
+**Uses** `do_tick`, `get_ticks`, `reset_ticks`, `count_pyturtles`,
+`get_all_pyturtles`, `netlogoshow`, `nl_output_print`, `run_command`.
+
+??? example "Code"
 
     ```python title="simple/4-ticks-and-output.py"
     --8<-- "Examples/simple/4-ticks-and-output.py"
     ```
 
-??? example "Code: simple/5-widgets.py"
+### Interface widgets { #widgets-0x }
+
+![The widgets set from Python](assets/gifs/widgets-0x.gif){ .demo }
+
+[`simple/5-widgets.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/5-widgets.py):
+reads and sets the widgets of the bundled model (the speed slider, the
+show-label switch, the scenario chooser, the user-text input) and evaluates
+monitor expressions.
+
+**Uses** `get_slider`, `set_slider`, `get_switch`, `set_switch`,
+`get_chooser`, `set_chooser`, `get_input_box`, `set_input_box`,
+`get_monitor`.
+
+??? example "Code"
 
     ```python title="simple/5-widgets.py"
     --8<-- "Examples/simple/5-widgets.py"
     ```
 
-??? example "Code: simple/6-plot.py"
+### Plotting from Python { #plot-0x }
+
+![A plot drawn by Python](assets/gifs/plot-0x.gif){ .demo }
+
+[`simple/6-plot.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/simple/6-plot.py):
+a car drives a circle while Python draws, in the "My Plot" widget, its
+distance to the centre, with its own pen, colour, mode and ranges.
+
+**Uses** `set_current_plot`, `create_plot_pen`, `set_plot_pen`,
+`set_plot_pen_color`, `set_plot_pen_mode`, `set_plot_x_range`,
+`set_plot_y_range`, `plot_add`, `plot_xy`.
+
+??? example "Code"
 
     ```python title="simple/6-plot.py"
     --8<-- "Examples/simple/6-plot.py"

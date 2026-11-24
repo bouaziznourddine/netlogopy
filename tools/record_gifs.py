@@ -8,7 +8,9 @@ the example as it is, replaces ``time.sleep`` with a recorder that saves the
 NetLogo view (or the whole interface, for the widget example) at each step,
 and assembles the images into ``docs/assets/gifs/<name>.gif`` with Pillow.
 Scripts that never sleep (headless data examples) are recorded at their
-``go()`` and ``tick()`` calls instead ("view-ticks").  Recordings that open
+``go()`` and ``tick()`` calls instead ("view-ticks"); "views-ticks" does the
+same for every session, from its own thread, and puts their views side by
+side.  Recordings that open
 the window ("interface") should run one per process:
 
     python tools/record_gifs.py widgets-0x
@@ -20,6 +22,7 @@ import os
 import runpy
 import sys
 import tempfile
+import threading
 import time
 import weakref
 
@@ -56,6 +59,9 @@ RECORDINGS = [
     # scripts without time.sleep(): a frame every `every` go() / tick()
     ("collect-data", "advanced/31-collect-data.py", "view-ticks", 6, 300),
     ("export-import", "advanced/34-export-import.py", "view-ticks", 1, 360),
+    ("experiment", "advanced/32-experiment.py", "view", 2, 360),
+    # several sessions at once, in threads: their views side by side
+    ("two-models", "advanced/33-two-models.py", "views-ticks", 3, 560),
 ]
 FRAME_MS = 80          # time per frame in the GIF
 HOLD_MS = 1500         # last frame, and the final pause of each example
@@ -68,6 +74,8 @@ class Recorder:
         self.sessions = []
         self.frames = []
         self.steps = 0
+        self.lock = threading.Lock()
+        self.latest, self.order, self.counts = {}, [], {}
 
     def session(self):
         alive = [ref() for ref in self.sessions]
@@ -87,6 +95,33 @@ class Recorder:
         except Exception:                   # a world that is being rebuilt: skip the frame
             return
         self.frames.append((path, HOLD_MS if hold else FRAME_MS))
+
+    def snap_views(self, nl):
+        """views-ticks: save this session's view, then all latest views side by side."""
+        from PIL import Image
+        own = os.path.join(self.folder, f"view-{id(nl)}.png")
+        try:
+            nl.export_view(own)
+            image = Image.open(own)
+            image.load()
+        except Exception:
+            return
+        with self.lock:
+            if len(self.frames) >= MAX_FRAMES:
+                return
+            self.latest[id(nl)] = image
+            views = [self.latest[key] for key in sorted(self.latest, key=self.order.index)]
+            height = max(view.height for view in views)
+            views = [view.resize((round(view.width * height / view.height), height)) for view in views]
+            gap = 8
+            frame = Image.new("RGB", (sum(v.width for v in views) + gap * (len(views) - 1), height), "white")
+            x = 0
+            for view in views:
+                frame.paste(view, (x, 0))
+                x += view.width + gap
+            path = os.path.join(self.folder, f"{len(self.frames):04d}.png")
+            frame.save(path)
+            self.frames.append((path, FRAME_MS))
 
     def sleep(self, seconds):
         if seconds >= 1:                    # the pause at the end of an example
@@ -109,14 +144,23 @@ def record(name, script, capture, every, width):
         recorder.sessions.append(weakref.ref(self))
 
     def close(self):
-        if recorder.session() is self and recorder.steps:
+        if capture != "views-ticks" and recorder.session() is self and recorder.steps:
             recorder.snap(hold=True)        # the final state, held (not helper sessions)
         original_close(self)
 
     def stepped(original):
         def step(self, *args, **kwargs):
             original(self, *args, **kwargs)
-            if recorder.session() is self:
+            if capture == "views-ticks":
+                key = id(self)
+                with recorder.lock:
+                    if key not in recorder.order:
+                        recorder.order.append(key)
+                    recorder.counts[key] = recorder.counts.get(key, 0) + 1
+                    due = recorder.counts[key] % every == 0
+                if due:
+                    recorder.snap_views(self)
+            elif recorder.session() is self:
                 recorder.sleep(0)
         return step
 

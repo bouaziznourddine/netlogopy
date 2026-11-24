@@ -18,14 +18,18 @@ def run_fire(results):
     with NetLogo(FIRE) as fire:
         fire.globals["density"] = 65
         fire.setup()
-        steps = fire.run_until("not any? turtles", max_steps=2000)
+        steps = 0
+        while fire.report("any? turtles") and steps < 2000:   # or fire.run_until(...)
+            fire.go()
+            steps += 1
         results["fire"] = f"{fire.report('burned-trees'):.0f} trees burned in {steps} steps"
 
 
 def run_wolf_sheep(results):
     with NetLogo(WOLF) as wolf:
         wolf.setup()
-        wolf.go(100)
+        for tick in range(100):                                # or wolf.go(100)
+            wolf.go()
         sheep, wolves = wolf.report(["count sheep", "count wolves"])
         results["wolf sheep"] = f"{sheep:.0f} sheep and {wolves:.0f} wolves after 100 ticks"
 
