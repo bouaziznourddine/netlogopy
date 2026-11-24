@@ -48,6 +48,9 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - **Interface widgets from Python** (NetLogo window): `add_button`,
   `add_slider`, `add_switch`, `add_chooser`, `add_input`, `add_monitor`,
   `add_plot`, `add_output`, `add_note`, and `press_button` to click a button.
+- **Documentation site** (MkDocs Material, GitHub Pages): installation,
+  guide, examples with animations, API reference, paper.
+  `tools/record_gifs.py` records the animations from the example scripts.
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
@@ -62,9 +65,14 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `PyTurtle` and `Street` class names, and `pyturtle.fields` (the extra
   attributes as a live dict).
 - Tests against a real NetLogo, a GitHub Actions workflow, type information
-  (`py.typed`), and eight new examples (`Examples/advanced`), including the
+  (`py.typed`), and eleven new examples (`Examples/advanced`), including the
   job shop with human operators presented at SW25 (simulation and
-  re-optimisation of the machine queues).
+  re-optimisation of the machine queues), interface widgets added from
+  Python, a background run paused and changed by Python (37), and a Python
+  vaccination policy in an epidemic (38).
+- The 26 one-function examples of `Examples/simple` are merged into six
+  (first agents, movement, appearance, ticks and output, widgets, plots),
+  which still show every 0.x function.
 
 ### Changed
 

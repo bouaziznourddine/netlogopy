@@ -1,5 +1,11 @@
 # netlogopy
 
+[![Documentation](https://img.shields.io/badge/docs-bouaziznourddine.github.io%2Fnetlogopy-00897b)](https://bouaziznourddine.github.io/netlogopy/)
+[![tests](https://github.com/bouaziznourddine/netlogopy/actions/workflows/tests.yml/badge.svg)](https://github.com/bouaziznourddine/netlogopy/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/netlogopy)](https://pypi.org/project/netlogopy/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![DOI](https://img.shields.io/badge/DOI-10.36819%2FSW25.019-informational)](https://doi.org/10.36819/SW25.019)
+
 `netlogopy` drives [NetLogo](https://ccl.northwestern.edu/netlogo/) models from
 Python. It combines NetLogo's agent-based simulation environment with Python's
 libraries for computation, optimization and AI: create and move agents from
@@ -14,6 +20,14 @@ with NetLogo("Wolf Sheep Predation.nlogo") as nl:    # headless by default
     nl.setup()
     data = nl.collect({"sheep": "count sheep", "wolves": "count wolves"}, steps=200)
 ```
+
+<p align="center">
+  <img src="docs/assets/gifs/job-shop.gif" width="300" alt="Job shop with human operators: NetLogo shows the workshop, Python re-optimises the queues">
+  <img src="docs/assets/gifs/wolf-sheep-with-python-agents.gif" width="300" alt="Wolf Sheep Predation with two cars driven by Python">
+  <img src="docs/assets/gifs/add-widgets.gif" width="300" alt="Interface widgets added from Python">
+</p>
+
+**Documentation, guide and examples: <https://bouaziznourddine.github.io/netlogopy/>**
 
 ## Features
 
@@ -428,12 +442,29 @@ Changes in 1.0: `n.report()` returns Python values instead of strings, and
 
 | Folder | Examples |
 |---|---|
-| [Examples/simple](Examples/simple) | 1–26: one 0.x function per script (turtles, streets, movement, colors, pen, ticks, slider, switch, monitor, plot...) |
+| [Examples/simple](Examples/simple) | the 0.x API: 1 first agents, 2 movement, 3 appearance and drawing, 4 ticks and output, 5 widgets, 6 plots |
 | [Examples/complexe](Examples/complexe) | 27: controlling an existing model; Fire and Wolf Sheep with Python agents |
-| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation), 36 interface widgets added from Python |
+| [Examples/advanced](Examples/advanced) | 28 quick start, 29 patch grids, 30 networks and layouts, 31 time series, 32 parameter sweep, 33 several models at once, 34 save and restore, 35 job shop with human operators (the SW25 application: simulation + re-optimisation), 36 interface widgets added from Python, 37 start, pause and stop a running model, 38 a Python vaccination policy in an epidemic |
 
 ```bash
 python Examples/advanced/28-quickstart.py
+```
+
+The [examples page](https://bouaziznourddine.github.io/netlogopy/examples/) of
+the documentation shows each of them in an animation;
+`python tools/record_gifs.py` records the animations again from the scripts.
+
+## Documentation
+
+The site is built with MkDocs Material from `docs/` and published on GitHub
+Pages by `.github/workflows/docs.yml`. To build it locally:
+
+```bash
+pip install -r docs/requirements.txt
+```
+
+```bash
+mkdocs serve
 ```
 
 ## Tests

@@ -28,3 +28,6 @@ Thumbs.db
 .*.tmp.nlogo
 .*.tmp.nlogox
 netlogopy-output/
+
+# Documentation site (mkdocs build)
+site/

@@ -25,4 +25,4 @@ def test_example_runs(script, monkeypatch, tmp_path, capsys):
 
 
 def test_every_example_is_collected():
-    assert len(SCRIPTS) >= 36
+    assert len(SCRIPTS) >= 20

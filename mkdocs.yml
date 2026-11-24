@@ -1,0 +1,117 @@
+site_name: netlogopy
+site_description: Drive NetLogo models from Python - agents, experiments, data and AI.
+site_url: https://bouaziznourddine.github.io/netlogopy/
+repo_url: https://github.com/bouaziznourddine/netlogopy
+repo_name: bouaziznourddine/netlogopy
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2024-2026 Nourddine Bouaziz - MIT License
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quick start: quickstart.md
+  - Guide:
+      - Sessions and NetLogo code: guide/sessions.md
+      - Agents: guide/agents.md
+      - Running a simulation: guide/simulation.md
+      - World, plots and files: guide/world.md
+      - Interface widgets: guide/widgets.md
+      - Data and experiments: guide/data.md
+      - Your own models: guide/models.md
+      - The 0.x API: guide/legacy.md
+  - Examples: examples.md
+  - API reference:
+      - Overview: api/index.md
+      - NetLogo session: api/netlogo.md
+      - Agents: api/agents.md
+      - Experiments: api/experiment.md
+      - Conversion, colors, errors: api/other.md
+  - About:
+      - How it works: how-it-works.md
+      - Paper and citation: paper.md
+      - Changelog: changelog.md
+      - License: license.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            docstring_style: sphinx
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            inherited_members: true
+            members_order: source
+            filters: ["!^_"]
+            merge_init_into_class: true
+            heading_level: 2
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/bouaziznourddine/netlogopy
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/netlogopy/
+
+extra_css:
+  - assets/extra.css
