@@ -68,13 +68,13 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `scenario` chooser, `user-text` input, monitors, `My Plot` and an output area.
 - `python -m netlogopy` checks the installation: JPype, NetLogo, Java, and a
   headless start of NetLogo.
-- The code printed in the SW25 paper runs as it is: `netlogopy.nelogopy` (the
-  paper's import spelling) is back, and a test executes the paper's listings.
+- `netlogopy.nelogopy`, the module name of the first releases, is back, and a
+  test runs the scripts written for them.
 - `PyTurtle` and `Street` class names, and `pyturtle.fields` (the extra
   attributes as a live dict).
 - Tests against a real NetLogo, a GitHub Actions workflow, type information
   (`py.typed`), and seventeen new examples (`Examples/advanced`), including the
-  job shop with human operators presented at SW25 (simulation and
+  job shop with human operators (simulation and
   re-optimisation of the machine queues), interface widgets added from
   Python, a background run paused and changed by Python (37), and a Python
   vaccination policy in an epidemic (38), calibration with an optimiser (39),
@@ -101,8 +101,7 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - Packaging: `pyproject.toml` is the only source of metadata, with an SPDX
   license and the version read from `netlogopy.__version__`; the project URLs
   point to `github.com/bouaziznourddine/netlogopy`.
-- Repository: `.gitignore` and `.gitattributes`; the SW25 paper and the BibTeX
-  references are in `paper/`.
+- Repository: `.gitignore` and `.gitattributes`.
 
 ### Fixed
 

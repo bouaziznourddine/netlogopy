@@ -66,7 +66,6 @@ nav:
       - Conversion, colors, errors: api/other.md
   - About:
       - How it works: how-it-works.md
-      - Paper and citation: paper.md
       - Changelog: changelog.md
       - License: license.md
 

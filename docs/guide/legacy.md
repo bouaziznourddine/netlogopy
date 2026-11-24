@@ -3,9 +3,8 @@
 Scripts written for netlogopy 0.x keep working: `from netlogopy.netlogopy import *`
 (or `from netlogopy import *`) gives the old functions and the new classes.
 `run_netlogo()` returns a `NetLogo` session, so every new method is available
-on it, and `pyturtle` objects are `Turtle` objects. The code printed in the
-[SW25 paper](../paper.md) runs as it is, including its import spelling
-`from netlogopy.nelogopy import *`.
+on it, and `pyturtle` objects are `Turtle` objects. The import spelling of the
+first releases, `from netlogopy.nelogopy import *`, still works.
 
 ```python
 from netlogopy.netlogopy import *

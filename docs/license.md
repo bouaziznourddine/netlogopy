@@ -12,7 +12,7 @@ The two example models in `Examples/complexe` (Fire and Wolf Sheep Predation)
 come from the NetLogo Models Library: Copyright 1997 Uri Wilensky, under
 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) (credit
 the author, no commercial use, share alike); their Info tab gives the full
-notice. The SW25 paper in `paper/` is the authors' publication.
+notice.
 
 
 ## The MIT License of netlogopy

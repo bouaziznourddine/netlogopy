@@ -90,5 +90,4 @@ with NetLogo("Wolf Sheep Predation.nlogo") as nl:      # headless by default
 
 NetLogo 6 and 7 are supported (tested with 6.2.2, 6.3.0 and 7.0.0). NetLogo
 runs inside the Python process through [JPype](https://jpype.readthedocs.io):
-no Java server, no socket. Scripts written for netlogopy 0.x, and the code of
-the [SW25 paper](paper.md), keep working.
+no Java server, no socket. Scripts written for netlogopy 0.x keep working.

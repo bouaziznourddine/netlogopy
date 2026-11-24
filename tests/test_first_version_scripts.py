@@ -1,9 +1,7 @@
-"""The code printed in the SW25 paper must keep running as it is.
+"""Scripts written for the first releases of netlogopy must keep running.
 
-Bouaziz, Bettayeb, Sahnoun, Yassine: "Netlogopy: Unlocking Advanced Simulation
-and Integration for NetLogo Using Python", Simulation Workshop 2025,
-doi:10.36819/SW25.019 -- sections 2.3.1 to 2.3.7.  Only the placeholder paths
-are filled in; the import spelling (``netlogopy.nelogopy``) is the paper's.
+They use the 0.x API and the first import spelling (``netlogopy.nelogopy``);
+only the placeholder paths are filled in.
 """
 
 import os
@@ -13,7 +11,7 @@ from conftest import EXAMPLES, WOLF_MODEL
 
 pytestmark = pytest.mark.netlogo
 
-SECTIONS_2_3_1_TO_2_3_6 = '''
+AGENTS_SCRIPT = '''
 import time
 from netlogopy.nelogopy import *
 
@@ -72,7 +70,7 @@ distance = distancebetween(n, car01, car02)
 print(f"Distance between car01 and car02: {distance}")
 '''
 
-SECTION_2_3_7 = '''
+EXISTING_MODEL_SCRIPT = '''
 import time, os, sys
 from netlogopy.nelogopy import *
 
@@ -100,7 +98,7 @@ for i in range(100):
 
 
 @pytest.fixture
-def paper(monkeypatch):
+def script(monkeypatch):
     monkeypatch.setenv("NETLOGOPY_HEADLESS", "1")
     monkeypatch.setattr("time.sleep", lambda seconds: None)
     namespace = {"netlogo_home": None}
@@ -110,21 +108,21 @@ def paper(monkeypatch):
         session.close_model()
 
 
-def test_sections_2_3_1_to_2_3_6(paper):
-    paper["background_image"] = os.path.join(EXAMPLES, "netlogopy.png")
-    exec(SECTIONS_2_3_1_TO_2_3_6, paper)
-    assert paper["after_moving"] == [20, 30]              # ten steps north
-    assert paper["after_approach"] < 26 and paper["after_setxy"] == [10, 10]
-    car01, car02 = paper["car01"], paper["car02"]
-    assert paper["distance"] == 0 and car01.get_xy() == car02.get_xy() == [5, 5]
+def test_agents_script(script):
+    script["background_image"] = os.path.join(EXAMPLES, "netlogopy.png")
+    exec(AGENTS_SCRIPT, script)
+    assert script["after_moving"] == [20, 30]              # ten steps north
+    assert script["after_approach"] < 26 and script["after_setxy"] == [10, 10]
+    car01, car02 = script["car01"], script["car02"]
+    assert script["distance"] == 0 and car01.get_xy() == car02.get_xy() == [5, 5]
     assert car01.hidden and car01.get_shape() == "default"
-    assert paper["n"].count("streets") == 1
+    assert script["n"].count("streets") == 1
 
 
-def test_section_2_3_7_existing_model(paper):
-    paper["path_model"] = WOLF_MODEL
-    exec(SECTION_2_3_7, paper)
-    n = paper["n"]
+def test_existing_model_script(script):
+    script["path_model"] = WOLF_MODEL
+    exec(EXISTING_MODEL_SCRIPT, script)
+    n = script["n"]
     assert n.ticks == 100 and (n.world_width, n.world_height) == (71, 56)
     assert n.count("pyturtles") == 2 and n.count("streets") == 1
-    assert paper["car01"].get_xy() == [10, 29]            # reset at i = 80, then 19 steps
+    assert script["car01"].get_xy() == [10, 29]            # reset at i = 80, then 19 steps

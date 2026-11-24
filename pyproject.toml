@@ -42,7 +42,6 @@ Homepage = "https://github.com/bouaziznourddine/netlogopy"
 "Bug Tracker" = "https://github.com/bouaziznourddine/netlogopy/issues"
 "Source Code" = "https://github.com/bouaziznourddine/netlogopy"
 Changelog = "https://github.com/bouaziznourddine/netlogopy/blob/main/CHANGELOG.md"
-Paper = "https://doi.org/10.36819/SW25.019"
 
 [tool.setuptools]
 packages = ["netlogopy"]

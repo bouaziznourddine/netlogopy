@@ -1,8 +1,7 @@
 """
 Example 35 : Job shop with human operators (simulation + optimisation)
 ======================================================================
-The application shown with netlogopy at the Simulation Workshop 2025 (SW25):
-a job shop where each machine has an operator.  The operator's punctuality
+A job shop where each machine has an operator.  The operator's punctuality
 (a Markov chain between the machine and three non-productive zones), fatigue
 and experience set the processing speed.
 

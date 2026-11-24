@@ -11,7 +11,6 @@
   <a href="https://github.com/bouaziznourddine/netlogopy/actions/workflows/tests.yml"><img src="https://github.com/bouaziznourddine/netlogopy/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <a href="https://pypi.org/project/netlogopy/"><img src="https://img.shields.io/pypi/v/netlogopy" alt="PyPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
-  <a href="https://doi.org/10.36819/SW25.019"><img src="https://img.shields.io/badge/DOI-10.36819%2FSW25.019-informational" alt="DOI"></a>
 </p>
 
 <p align="center">
@@ -219,7 +218,7 @@ and the [API reference](https://bouaziznourddine.github.io/netlogopy/api/).
 - On macOS, headless sessions work; the NetLogo window does not (Java's AWT
   needs the main thread there).
 - Scripts written for netlogopy 0.x (`run_netlogo`, `pyturtle`, `street`...)
-  keep working, and the code of the SW25 paper runs as printed: see
+  keep working: see
   [The 0.x API](https://bouaziznourddine.github.io/netlogopy/guide/legacy/)
   and the [changelog](CHANGELOG.md).
 
@@ -241,28 +240,6 @@ example scripts.
 
 Questions, issues and ideas are welcome on the
 [issue tracker](https://github.com/bouaziznourddine/netlogopy/issues).
-
-## Citation
-
-If you use netlogopy in your research, please cite:
-
-> Nourddine Bouaziz, Belgacem Bettayeb, M'Hammed Sahnoun, Adnan Yassine.
-> *Netlogopy: Unlocking Advanced Simulation and Integration for NetLogo Using
-> Python.* Simulation Workshop 2025 (SW25), March 2025, Exeter, United Kingdom.
-> [doi:10.36819/SW25.019](https://doi.org/10.36819/SW25.019) —
-> [hal-04982069](https://hal.science/hal-04982069)
-> ([PDF](paper/netlogopy-SW25-paper.pdf))
-
-```bibtex
-@inproceedings{bouaziz2025netlogopy,
-  title     = {Netlogopy: Unlocking Advanced Simulation and Integration for {NetLogo} Using {Python}},
-  author    = {Bouaziz, Nourddine and Bettayeb, Belgacem and Sahnoun, M'hammed and Yassine, Adnan},
-  booktitle = {Proceedings of the Operational Research Society Simulation Workshop 2025 ({SW25})},
-  address   = {Exeter, United Kingdom},
-  year      = {2025},
-  doi       = {10.36819/SW25.019}
-}
-```
 
 ## History and acknowledgements
 

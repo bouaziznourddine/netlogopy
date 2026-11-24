@@ -42,7 +42,7 @@ __includes [ "base.nls" ]
   for the session. With the `NetLogo` class, call `nl.import_shapes()` (or
   `nl.import_shapes("other-model.nlogo")` to take the shapes of any model).
 
-This is the code of section 2.3.7 of the [SW25 paper](../paper.md), as printed:
+A complete 0.x script, written for the first releases:
 
 ```python
 import time

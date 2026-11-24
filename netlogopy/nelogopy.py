@@ -1,8 +1,8 @@
 """Old spelling of :mod:`netlogopy.netlogopy`.
 
-The first releases named this module ``nelogopy``, and the SW25 paper's
-examples import it that way (``from netlogopy.nelogopy import *``).  It is
-kept so that code copied from the paper keeps working.
+The first releases named this module ``nelogopy``, and scripts written for
+them import it that way (``from netlogopy.nelogopy import *``).  It is kept
+so that these scripts keep working.
 """
 
 from . import netlogopy as _netlogopy
