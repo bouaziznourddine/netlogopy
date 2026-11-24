@@ -72,6 +72,7 @@ class Agent:
         raise NotImplementedError
 
     def to_netlogo(self) -> str:
+        """NetLogo code designating this agent: :attr:`ref` between parentheses."""
         return f"({self.ref})"
 
     def _key(self) -> tuple:
@@ -150,6 +151,7 @@ class Turtle(Agent):
 
     @property
     def ref(self) -> str:
+        """NetLogo expression designating this turtle (``turtle 3``)."""
         return f"turtle {self.who}"
 
     def _key(self) -> tuple:
@@ -211,6 +213,7 @@ class Turtle(Agent):
         return self.ask(f"jump {_num(distance)}")
 
     def setxy(self, x: float, y: float) -> "Turtle":
+        """Move to the point (x, y) (``setxy``)."""
         return self.ask(f"setxy {_num(x)} {_num(y)}")
 
     def move_to(self, agent: Agent) -> "Turtle":
@@ -218,9 +221,11 @@ class Turtle(Agent):
         return self.ask(f"move-to {agent.to_netlogo()}")
 
     def face(self, agent: Agent) -> "Turtle":
+        """Turn towards a turtle or a patch (``face``)."""
         return self.ask(f"face {agent.to_netlogo()}")
 
     def facexy(self, x: float, y: float) -> "Turtle":
+        """Turn towards the point (x, y) (``facexy``)."""
         return self.ask(f"facexy {_num(x)} {_num(y)}")
 
     def home(self) -> "Turtle":
@@ -232,24 +237,30 @@ class Turtle(Agent):
         return bool(self.of(f"can-move? {_num(distance)}"))
 
     def die(self) -> None:
+        """Kill this turtle (``die``)."""
         self.ask("die")
 
     # appearance and pen
     def hide_turtle(self) -> "Turtle":
+        """Make the turtle invisible (``hide-turtle``)."""
         return self.ask("hide-turtle")
 
     def show_turtle(self) -> "Turtle":
+        """Make the turtle visible again (``show-turtle``)."""
         return self.ask("show-turtle")
 
     ht, st = hide_turtle, show_turtle
 
     def pen_down(self) -> "Turtle":
+        """Put the pen down: the turtle draws a line when it moves (``pen-down``)."""
         return self.ask("pen-down")
 
     def pen_up(self) -> "Turtle":
+        """Lift the pen: the turtle stops drawing (``pen-up``)."""
         return self.ask("pen-up")
 
     def pen_erase(self) -> "Turtle":
+        """Make the turtle erase the lines it moves over (``pen-erase``)."""
         return self.ask("pen-erase")
 
     pd, pu, pe = pen_down, pen_up, pen_erase
@@ -259,13 +270,16 @@ class Turtle(Agent):
         return self.ask("stamp")
 
     def stamp_erase(self) -> "Turtle":
+        """Erase the drawing under the turtle's shape (``stamp-erase``)."""
         return self.ask("stamp-erase")
 
     # geometry
     def distance(self, agent: Agent) -> float:
+        """Distance to a turtle or a patch (``distance``)."""
         return self.of(f"distance {agent.to_netlogo()}")
 
     def distancexy(self, x: float, y: float) -> float:
+        """Distance to the point (x, y) (``distancexy``)."""
         return self.of(f"distancexy {_num(x)} {_num(y)}")
 
     def towards(self, agent: Agent) -> float:
@@ -273,22 +287,28 @@ class Turtle(Agent):
         return self.of(f"towards {agent.to_netlogo()}")
 
     def towardsxy(self, x: float, y: float) -> float:
+        """Heading pointing to the point (x, y) (``towardsxy``)."""
         return self.of(f"towardsxy {_num(x)} {_num(y)}")
 
     # patches
     def patch_here(self) -> "Patch":
+        """The patch under the turtle (``patch-here``)."""
         return self.of("patch-here")
 
     def patch_ahead(self, distance: float) -> Optional["Patch"]:
+        """The patch ``distance`` ahead of the turtle; None outside the world (``patch-ahead``)."""
         return self.of(f"patch-ahead {_num(distance)}")
 
     def patch_at(self, dx: float, dy: float) -> Optional["Patch"]:
+        """The patch at (dx, dy) from the turtle; None outside the world (``patch-at``)."""
         return self.of(f"patch-at {_num(dx)} {_num(dy)}")
 
     def patch_right_and_ahead(self, angle: float, distance: float) -> Optional["Patch"]:
+        """The patch ``distance`` away, ``angle`` degrees to the right of the heading; None outside the world."""
         return self.of(f"patch-right-and-ahead {_num(angle)} {_num(distance)}")
 
     def patch_left_and_ahead(self, angle: float, distance: float) -> Optional["Patch"]:
+        """The patch ``distance`` away, ``angle`` degrees to the left of the heading; None outside the world."""
         return self.of(f"patch-left-and-ahead {_num(angle)} {_num(distance)}")
 
     def neighbors(self) -> List["Patch"]:
@@ -296,6 +316,7 @@ class Turtle(Agent):
         return self.of("sort neighbors")
 
     def neighbors4(self) -> List["Patch"]:
+        """The 4 patches (north, east, south, west) around the turtle's patch."""
         return self.of("sort neighbors4")
 
     # other agents
@@ -359,12 +380,15 @@ class Turtle(Agent):
         return self._link_query("sort out-link-neighbors", "sort out-{singular}-neighbors", breed)
 
     def my_links(self, breed: Optional[str] = None) -> List["Link"]:
+        """Links connected to this turtle, optionally of one link breed (``my-links``)."""
         return self._link_query("sort my-links", "sort my-{plural}", breed)
 
     def my_in_links(self, breed: Optional[str] = None) -> List["Link"]:
+        """Links arriving at this turtle, optionally of one link breed (``my-in-links``)."""
         return self._link_query("sort my-in-links", "sort my-in-{plural}", breed)
 
     def my_out_links(self, breed: Optional[str] = None) -> List["Link"]:
+        """Links leaving this turtle, optionally of one link breed (``my-out-links``)."""
         return self._link_query("sort my-out-links", "sort my-out-{plural}", breed)
 
     def link_with(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
@@ -379,10 +403,12 @@ class Turtle(Agent):
 
     def create_links_to(self, others: Sequence["Turtle"], breed: Optional[str] = None,
                         **variables: Any) -> List["Link"]:
+        """Directed links from this turtle to several turtles."""
         return [self.create_link_to(other, breed, **variables) for other in others]
 
     def create_links_from(self, others: Sequence["Turtle"], breed: Optional[str] = None,
                           **variables: Any) -> List["Link"]:
+        """Directed links from several turtles to this turtle."""
         return [self.create_link_from(other, breed, **variables) for other in others]
 
     def is_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
@@ -391,10 +417,12 @@ class Turtle(Agent):
         return bool(self._link_query(f"link-neighbor? {target}", f"{{singular}}-neighbor? {target}", breed))
 
     def is_in_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
+        """True if a link comes from ``other`` to this turtle (``in-link-neighbor?``)."""
         target = other.to_netlogo()
         return bool(self._link_query(f"in-link-neighbor? {target}", f"in-{{singular}}-neighbor? {target}", breed))
 
     def is_out_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
+        """True if a link goes from this turtle to ``other`` (``out-link-neighbor?``)."""
         target = other.to_netlogo()
         return bool(self._link_query(f"out-link-neighbor? {target}", f"out-{{singular}}-neighbor? {target}", breed))
 
@@ -404,6 +432,7 @@ class Turtle(Agent):
         return self._link_query(f"in-link-from {target}", f"in-{{singular}}-from {target}", breed)
 
     def out_link_to(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
+        """The link going from this turtle to ``other`` (None if there is none)."""
         target = other.to_netlogo()
         return self._link_query(f"out-link-to {target}", f"out-{{singular}}-to {target}", breed)
 
@@ -414,6 +443,7 @@ class Turtle(Agent):
         return self
 
     def uphill4(self, patch_variable: str) -> "Turtle":
+        """Move to the neighbouring patch (4 neighbours) with the highest value."""
         self.nl.command(f"ask {self.to_netlogo()} [ uphill4 {variable_name(patch_variable)} ]")
         return self
 
@@ -423,6 +453,7 @@ class Turtle(Agent):
         return self
 
     def downhill4(self, patch_variable: str) -> "Turtle":
+        """Move to the neighbouring patch (4 neighbours) with the lowest value."""
         self.nl.command(f"ask {self.to_netlogo()} [ downhill4 {variable_name(patch_variable)} ]")
         return self
 
@@ -431,6 +462,7 @@ class Turtle(Agent):
         return self.of(f"sort {breed}-at {_num(dx)} {_num(dy)}")
 
     def patch_at_heading_and_distance(self, heading: float, distance: float) -> Optional["Patch"]:
+        """The patch ``distance`` away in direction ``heading``; None outside the world."""
         return self.of(f"patch-at-heading-and-distance {_num(heading)} {_num(distance)}")
 
     # observer perspective
@@ -460,6 +492,7 @@ class Patch(Agent):
 
     @property
     def ref(self) -> str:
+        """NetLogo expression designating this patch (``patch 2 -1``)."""
         return f"patch {self.pxcor} {self.pycor}"
 
     def _key(self) -> tuple:
@@ -473,24 +506,31 @@ class Patch(Agent):
     plabel_color = _variable("plabel-color", "Color of the patch label.")
 
     def neighbors(self) -> List["Patch"]:
+        """The 8 patches around this patch."""
         return self.of("sort neighbors")
 
     def neighbors4(self) -> List["Patch"]:
+        """The 4 patches (north, east, south, west) around this patch."""
         return self.of("sort neighbors4")
 
     def turtles_here(self, breed: str = "turtles") -> List[Turtle]:
+        """Turtles standing on this patch, optionally of one breed (``turtles-here``)."""
         return self.of(f"sort {breed}-here")
 
     def patch_at(self, dx: int, dy: int) -> Optional["Patch"]:
+        """The patch at (dx, dy) from this patch; None outside the world (``patch-at``)."""
         return self.of(f"patch-at {_num(dx)} {_num(dy)}")
 
     def distance(self, agent: Agent) -> float:
+        """Distance from the center of this patch to a turtle or a patch (``distance``)."""
         return self.of(f"distance {agent.to_netlogo()}")
 
     def distancexy(self, x: float, y: float) -> float:
+        """Distance from the center of this patch to the point (x, y) (``distancexy``)."""
         return self.of(f"distancexy {_num(x)} {_num(y)}")
 
     def in_radius(self, radius: float, agents: str = "patches", other: bool = False) -> List[Agent]:
+        """Agents of ``agents`` within ``radius`` (this patch included unless ``other``)."""
         return self.of(f"sort {'other ' if other else ''}({agents}) in-radius {_num(radius)}")
 
     def turtles_at(self, dx: int, dy: int, breed: str = "turtles") -> List[Turtle]:
@@ -498,6 +538,7 @@ class Patch(Agent):
         return self.of(f"sort {breed}-at {_num(dx)} {_num(dy)}")
 
     def patch_at_heading_and_distance(self, heading: float, distance: float) -> Optional["Patch"]:
+        """The patch ``distance`` away in direction ``heading``; None outside the world."""
         return self.of(f"patch-at-heading-and-distance {_num(heading)} {_num(distance)}")
 
     def sprout(self, count: int = 1, breed: Optional[str] = None,
@@ -531,6 +572,7 @@ class Link(Agent):
 
     @property
     def ref(self) -> str:
+        """NetLogo expression designating this link (``link 0 1``, or ``street 0 1`` for a breed)."""
         if self._singular is None:
             self._singular = self.nl._link_singular(self.breed)
         return f"{self._singular} {self.end1_who} {self.end2_who}"
@@ -545,13 +587,16 @@ class Link(Agent):
 
     @property
     def end1(self) -> Turtle:
+        """The first end of the link (the source of a directed link)."""
         return Turtle(self.nl, self.end1_who)
 
     @property
     def end2(self) -> Turtle:
+        """The second end of the link (the destination of a directed link)."""
         return Turtle(self.nl, self.end2_who)
 
     def both_ends(self) -> List[Turtle]:
+        """The two end turtles: ``[end1, end2]``."""
         return [self.end1, self.end2]
 
     def other_end(self, turtle: Union[Turtle, int]) -> Turtle:
@@ -578,12 +623,15 @@ class Link(Agent):
         return self.of("link-heading")
 
     def die(self) -> None:
+        """Remove this link (``die``)."""
         self.ask("die")
 
     def hide_link(self) -> "Link":
+        """Make the link invisible (``hide-link``)."""
         return self.ask("hide-link")
 
     def show_link(self) -> "Link":
+        """Make the link visible again (``show-link``)."""
         return self.ask("show-link")
 
     def tie(self) -> "Link":
@@ -591,4 +639,5 @@ class Link(Agent):
         return self.ask("tie")
 
     def untie(self) -> "Link":
+        """Free end2 from end1's movements (``untie``)."""
         return self.ask("untie")

@@ -5,10 +5,20 @@ import threading
 import time
 
 import pytest
-
 from conftest import FIRE_MODEL
-from netlogopy import (Code, Link, NetLogo, NetLogoCompileError, NetLogoError,
-                       NetLogoRuntimeError, Patch, Turtle, jvm_info, to_netlogo)
+
+from netlogopy import (
+    Code,
+    Link,
+    NetLogo,
+    NetLogoCompileError,
+    NetLogoError,
+    NetLogoRuntimeError,
+    Patch,
+    Turtle,
+    jvm_info,
+    to_netlogo,
+)
 
 pytestmark = pytest.mark.netlogo
 

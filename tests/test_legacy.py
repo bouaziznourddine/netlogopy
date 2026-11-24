@@ -3,9 +3,9 @@
 import os
 
 import pytest
+from conftest import EXAMPLES, FIRE_MODEL, WOLF_MODEL
 
 import netlogopy.netlogopy as legacy
-from conftest import EXAMPLES, FIRE_MODEL, WOLF_MODEL
 from netlogopy import NetLogo, NetLogoCompileError
 
 pytestmark = pytest.mark.netlogo

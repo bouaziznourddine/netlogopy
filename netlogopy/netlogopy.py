@@ -181,58 +181,72 @@ def clear_all_turtles(n: NetLogo) -> None:
 
 
 def get_ticks(n: NetLogo) -> int:
+    """Current tick count, as an integer."""
     return int(n.ticks)
 
 
 def do_tick(n: NetLogo) -> None:
+    """Advance the tick counter by one (NetLogo ``tick``)."""
     n.tick()
 
 
 def reset_ticks(n: NetLogo) -> None:
+    """Set the tick counter to zero (NetLogo ``reset-ticks``)."""
     n.reset_ticks()
 
 
 def tick_advance(n: NetLogo, amount: float) -> None:
+    """Advance the tick counter by ``amount`` (NetLogo ``tick-advance``)."""
     n.tick_advance(amount)
 
 
 def get_world_width(n: NetLogo) -> int:
+    """Number of patch columns (``world-width``)."""
     return n.world_width
 
 
 def get_world_height(n: NetLogo) -> int:
+    """Number of patch rows (``world-height``)."""
     return n.world_height
 
 
 def get_max_pxcor(n: NetLogo) -> int:
+    """Largest patch x coordinate (``max-pxcor``)."""
     return n.max_pxcor
 
 
 def get_min_pxcor(n: NetLogo) -> int:
+    """Smallest patch x coordinate (``min-pxcor``)."""
     return n.min_pxcor
 
 
 def get_max_pycor(n: NetLogo) -> int:
+    """Largest patch y coordinate (``max-pycor``)."""
     return n.max_pycor
 
 
 def get_min_pycor(n: NetLogo) -> int:
+    """Smallest patch y coordinate (``min-pycor``)."""
     return n.min_pycor
 
 
 def get_random_xcor(n: NetLogo) -> float:
+    """Random x coordinate inside the world (``random-xcor``)."""
     return n.report("random-xcor")
 
 
 def get_random_ycor(n: NetLogo) -> float:
+    """Random y coordinate inside the world (``random-ycor``)."""
     return n.report("random-ycor")
 
 
 def set_patch_color(n: NetLogo, x: int, y: int, color: float) -> None:
+    """Set the color of the patch at (x, y)."""
     n.command(f"ask patch {to_netlogo(x)} {to_netlogo(y)} [ set pcolor {to_netlogo(color)} ]")
 
 
 def get_patch_color(n: NetLogo, x: int, y: int) -> float:
+    """Color of the patch at (x, y)."""
     return n.report(f"[pcolor] of patch {to_netlogo(x)} {to_netlogo(y)}")
 
 
@@ -242,48 +256,59 @@ def getxyturtle(n: NetLogo, turtle_obj: Turtle) -> List[float]:
 
 
 def distancebetween(n: NetLogo, fromm: Turtle, target: Turtle) -> float:
+    """Distance between turtles ``fromm`` and ``target``."""
     return n.turtle(fromm.who).distance(target)
 
 
 def count_pyturtles(n: NetLogo) -> int:
+    """Number of turtles of the ``pyturtles`` breed."""
     return n.count("pyturtles")
 
 
 def get_all_pyturtles() -> List["pyturtle"]:
+    """The list of every pyturtle created (``list_pyturtle`` itself)."""
     return list_pyturtle
 
 
 # ─── Interface widgets ─────────────────────────────────────────────────────────
 
 def get_slider(n: NetLogo, name: str) -> float:
+    """Value of a slider, as a float."""
     return float(n.get_global(name))
 
 
 def set_slider(n: NetLogo, name: str, value: float) -> None:
+    """Set the value of a slider."""
     n.set_global(name, value)
 
 
 def get_switch(n: NetLogo, name: str) -> bool:
+    """State of a switch (True = on)."""
     return bool(n.get_global(name))
 
 
 def set_switch(n: NetLogo, name: str, value: bool) -> None:
+    """Turn a switch on (True) or off (False)."""
     n.set_global(name, bool(value))
 
 
 def get_chooser(n: NetLogo, name: str) -> Any:
+    """Selected value of a chooser."""
     return n.get_global(name)
 
 
 def set_chooser(n: NetLogo, name: str, value: Any) -> None:
+    """Select a value of a chooser."""
     n.set_global(name, value)
 
 
 def get_input_box(n: NetLogo, name: str) -> Any:
+    """Content of an input box."""
     return n.get_global(name)
 
 
 def set_input_box(n: NetLogo, name: str, value: Any) -> None:
+    """Set the content of an input box."""
     n.set_global(name, value)
 
 
@@ -295,50 +320,62 @@ def get_monitor(n: NetLogo, expression: str) -> Any:
 # ─── Plots ─────────────────────────────────────────────────────────────────────
 
 def set_current_plot(n: NetLogo, plot_name: str) -> None:
+    """Choose the plot the next plotting functions act on (``set-current-plot``)."""
     n.set_current_plot(plot_name)
 
 
 def set_plot_pen(n: NetLogo, pen_name: str) -> None:
+    """Choose the pen of the current plot (``set-current-plot-pen``)."""
     n.set_current_plot_pen(pen_name)
 
 
 def create_plot_pen(n: NetLogo, pen_name: str) -> None:
+    """Create a pen in the current plot and make it current (``create-temporary-plot-pen``)."""
     n.create_temporary_plot_pen(pen_name)
 
 
 def plot_add(n: NetLogo, value: float) -> None:
+    """Add a point to the current plot pen (``plot``)."""
     n.plot(value)
 
 
 def plot_xy(n: NetLogo, x: float, y: float) -> None:
+    """Add the point (x, y) to the current plot pen (``plotxy``)."""
     n.plotxy(x, y)
 
 
 def clear_plot(n: NetLogo) -> None:
+    """Erase the current plot (``clear-plot``)."""
     n.clear_plot()
 
 
 def set_plot_pen_color(n: NetLogo, color: float) -> None:
+    """Set the color of the current plot pen (``set-plot-pen-color``)."""
     n.set_plot_pen_color(color)
 
 
 def set_plot_pen_mode(n: NetLogo, mode: int) -> None:
+    """Set the mode of the current plot pen: 0 = line, 1 = bar, 2 = point."""
     n.set_plot_pen_mode(mode)
 
 
 def auto_plot_on(n: NetLogo) -> None:
+    """Let the current plot rescale its axes by itself (``auto-plot-on``)."""
     n.auto_plot_on()
 
 
 def auto_plot_off(n: NetLogo) -> None:
+    """Stop the current plot from rescaling its axes (``auto-plot-off``)."""
     n.auto_plot_off()
 
 
 def set_plot_x_range(n: NetLogo, x_min: float, x_max: float) -> None:
+    """Set the bounds of the x axis of the current plot (``set-plot-x-range``)."""
     n.set_plot_x_range(x_min, x_max)
 
 
 def set_plot_y_range(n: NetLogo, y_min: float, y_max: float) -> None:
+    """Set the bounds of the y axis of the current plot (``set-plot-y-range``)."""
     n.set_plot_y_range(y_min, y_max)
 
 
@@ -373,12 +410,15 @@ class turtle(Turtle):
 
     # movement
     def set_xcor(self, x: float) -> None:
+        """Set the x coordinate."""
         self.xcor = x
 
     def set_ycor(self, y: float) -> None:
+        """Set the y coordinate."""
         self.ycor = y
 
     def set_random_position(self) -> None:
+        """Move to a random point of the world."""
         self.ask("setxy random-xcor random-ycor")
 
     def wander(self, steps: float = 1) -> None:
@@ -386,84 +426,109 @@ class turtle(Turtle):
         self.ask(f"set heading random 360 fd {to_netlogo(steps)}")
 
     def face_to(self, target: Turtle) -> None:
+        """Turn towards ``target``."""
         self.face(target)
 
     def set_heading(self, angle: float) -> None:
+        """Set the heading in degrees (0 = north, 90 = east)."""
         self.heading = angle
 
     def get_heading(self) -> float:
+        """Heading in degrees."""
         return self.heading
 
     def towards_point(self, x: float, y: float) -> float:
+        """Heading pointing to the point (x, y)."""
         return self.towardsxy(x, y)
 
     # position
     def get_xcor(self) -> float:
+        """x coordinate."""
         return self.xcor
 
     def get_ycor(self) -> float:
+        """y coordinate."""
         return self.ycor
 
     def get_xy(self) -> List[float]:
+        """``[xcor, ycor]``."""
         return self.xy
 
     def distanceto(self, target: Turtle) -> float:
+        """Distance to ``target``."""
         return self.distance(target)
 
     def distance_to_point(self, x: float, y: float) -> float:
+        """Distance to the point (x, y)."""
         return self.distancexy(x, y)
 
     # appearance
     def set_shape(self, shape: str) -> None:
+        """Set the shape name (e.g. ``'car'``)."""
         self.shape = shape
 
     def get_shape(self) -> str:
+        """Shape name."""
         return str(self.shape)
 
     def set_color(self, color: float) -> None:
+        """Set the color."""
         self.color = color
 
     def get_color(self) -> float:
+        """Color."""
         return self.color
 
     def set_size(self, size: float) -> None:
+        """Set the size of the shape."""
         self.size = size
 
     def get_size(self) -> float:
+        """Size of the shape."""
         return self.size
 
     def set_label(self, text: Any) -> None:
+        """Set the text shown next to the turtle (converted to a string)."""
         self.label = str(text)
 
     def get_label(self) -> str:
+        """Text shown next to the turtle, as a string."""
         return str(self.label)
 
     def set_label_color(self, color: float) -> None:
+        """Set the color of the label."""
         self.label_color = color
 
     def hideturtle(self) -> None:
+        """Make the turtle invisible."""
         self.hide_turtle()
 
     def showturtle(self) -> None:
+        """Make the turtle visible again."""
         self.show_turtle()
 
     def dieturtle(self) -> None:
+        """Kill the turtle and remove it from ``list_pyturtle``."""
         self.die()
         if self in list_pyturtle:
             list_pyturtle.remove(self)
 
     # pen (NetLogo draws with the turtle's own color)
     def set_pen_color(self, color: float) -> None:
+        """Set the pen color, which is the turtle's own color."""
         self.color = color
 
     def set_pen_size(self, size: float) -> None:
+        """Set the width of the pen line."""
         self.pen_size = size
 
     # patches and neighbours
     def patch_here_color(self) -> float:
+        """Color of the patch under the turtle."""
         return self.of("pcolor")
 
     def set_patch_here_color(self, color: float) -> None:
+        """Set the color of the patch under the turtle."""
         self.ask(f"set pcolor {to_netlogo(color)}")
 
     def in_radius(self, radius: float) -> List[int]:  # type: ignore[override]
@@ -528,6 +593,7 @@ class street(Link):
 
     @property
     def n(self) -> NetLogo:
+        """The NetLogo session."""
         return self.nl
 
 

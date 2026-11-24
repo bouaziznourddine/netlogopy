@@ -8,7 +8,6 @@ import os
 import runpy
 
 import pytest
-
 from conftest import EXAMPLES
 
 SCRIPTS = sorted(glob.glob(os.path.join(EXAMPLES, "**", "*.py"), recursive=True))

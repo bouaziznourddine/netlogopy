@@ -1,8 +1,8 @@
 """run_experiment: parameter sweeps over the Fire model (headless, parallel)."""
 
 import pytest
-
 from conftest import FIRE_MODEL
+
 from netlogopy import run_experiment
 
 pytestmark = pytest.mark.netlogo

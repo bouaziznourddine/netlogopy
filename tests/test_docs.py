@@ -4,7 +4,6 @@ import os
 import re
 
 import pytest
-
 from conftest import ROOT
 
 TUTORIAL = os.path.join(ROOT, "docs", "tutorial.md")

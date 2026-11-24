@@ -11,6 +11,8 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   [JPype](https://jpype.readthedocs.io): no Java server, no socket, no port.
   Compiled NetLogo code is cached, so a repeated call takes a few hundredths of a millisecond
   instead of the 3 to 5 ms needed to compile it every time.
+- **Quality**: a docstring on every public class, method and function, code style
+  checked with Ruff, and test coverage measured in continuous integration.
 - **Agent variables without NetLogo code**: reading or writing a variable of a
   turtle or a patch (`turtle.xcor = x`, `patch.pcolor`, `agent.set(...)`) uses
   NetLogo's Java API directly, with NetLogo's own checks, so a new value no

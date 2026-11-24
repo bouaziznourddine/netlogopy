@@ -43,7 +43,7 @@ def main():
         nl.command("create-turtles 100")
         print(f"NetLogo {nl.netlogo_version}, Python {sys.version.split()[0]}")
         for name, call in CALLS.items():
-            print(f"{median_ms(lambda: call(nl)):7.3f} ms  {name}")
+            print(f"{median_ms(lambda call=call: call(nl)):7.3f} ms  {name}")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ are filled in; the import spelling (``netlogopy.nelogopy``) is the paper's.
 import os
 
 import pytest
-
 from conftest import EXAMPLES, WOLF_MODEL
 
 pytestmark = pytest.mark.netlogo

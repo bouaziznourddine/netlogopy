@@ -286,6 +286,7 @@ class NetLogo(WidgetsMixin):
 
     @property
     def closed(self) -> bool:
+        """True once the session is closed (:meth:`close` was called or the workspace is gone)."""
         return self._handle is None or self._handle.closed
 
     def __enter__(self) -> "NetLogo":
@@ -789,15 +790,19 @@ class NetLogo(WidgetsMixin):
         return self.report("ticks")
 
     def tick(self) -> None:
+        """Advance the tick counter by one and update the plots (NetLogo ``tick``)."""
         self.command("tick")
 
     def tick_advance(self, amount: float) -> None:
+        """Advance the tick counter by ``amount``, which may be fractional (NetLogo ``tick-advance``)."""
         self.command(f"tick-advance {to_netlogo(amount)}")
 
     def reset_ticks(self) -> None:
+        """Set the tick counter to zero and set up the plots (NetLogo ``reset-ticks``)."""
         self.command("reset-ticks")
 
     def clear_ticks(self) -> None:
+        """Clear the tick counter; ``ticks`` raises until :meth:`reset_ticks` (NetLogo ``clear-ticks``)."""
         self.command("clear-ticks")
 
     # ─── globals and interface widgets ────────────────────────────────────────
@@ -823,26 +828,32 @@ class NetLogo(WidgetsMixin):
     # ─── world ────────────────────────────────────────────────────────────────
     @property
     def min_pxcor(self) -> int:
+        """Smallest patch x coordinate (NetLogo ``min-pxcor``)."""
         return int(self.report("min-pxcor"))
 
     @property
     def max_pxcor(self) -> int:
+        """Largest patch x coordinate (NetLogo ``max-pxcor``)."""
         return int(self.report("max-pxcor"))
 
     @property
     def min_pycor(self) -> int:
+        """Smallest patch y coordinate (NetLogo ``min-pycor``)."""
         return int(self.report("min-pycor"))
 
     @property
     def max_pycor(self) -> int:
+        """Largest patch y coordinate (NetLogo ``max-pycor``)."""
         return int(self.report("max-pycor"))
 
     @property
     def world_width(self) -> int:
+        """Number of patch columns (NetLogo ``world-width``)."""
         return int(self.report("world-width"))
 
     @property
     def world_height(self) -> int:
+        """Number of patch rows (NetLogo ``world-height``)."""
         return int(self.report("world-height"))
 
     def resize_world(self, min_pxcor: int, max_pxcor: int, min_pycor: int, max_pycor: int) -> None:
@@ -851,9 +862,11 @@ class NetLogo(WidgetsMixin):
 
     @property
     def patch_size(self) -> float:
+        """Size of a patch in the view, in pixels (NetLogo ``patch-size``)."""
         return self.report("patch-size")
 
     def set_patch_size(self, size: float) -> None:
+        """Set the size of a patch in the view, in pixels (NetLogo ``set-patch-size``)."""
         self.command(f"set-patch-size {to_netlogo(size)}")
 
     @property
@@ -863,6 +876,7 @@ class NetLogo(WidgetsMixin):
 
     @property
     def wrap_y(self) -> bool:
+        """True when the world wraps vertically."""
         return bool(self._ws.world().wrappingAllowedInY())
 
     def set_topology(self, wrap_x: bool, wrap_y: bool) -> None:
@@ -876,21 +890,27 @@ class NetLogo(WidgetsMixin):
         self.command(f"random-seed {int(seed)}")
 
     def new_seed(self) -> int:
+        """A fresh seed for :meth:`random_seed` (NetLogo ``new-seed``)."""
         return int(self.report("new-seed"))
 
     def clear_all(self) -> None:
+        """Reset the whole model: agents, patches, globals, ticks, drawing, plots, output (``clear-all``)."""
         self.command("clear-all")
 
     def clear_turtles(self) -> None:
+        """Kill every turtle (NetLogo ``clear-turtles``)."""
         self.command("clear-turtles")
 
     def clear_patches(self) -> None:
+        """Reset the patch variables to their default values (NetLogo ``clear-patches``)."""
         self.command("clear-patches")
 
     def clear_links(self) -> None:
+        """Kill every link (NetLogo ``clear-links``)."""
         self.command("clear-links")
 
     def clear_globals(self) -> None:
+        """Set the globals declared in the code to 0 (NetLogo ``clear-globals``)."""
         self.command("clear-globals")
 
     def clear_drawing(self) -> None:
@@ -933,6 +953,7 @@ class NetLogo(WidgetsMixin):
         return self.report(f"sort {_with('patches', where)}")
 
     def links(self, breed: str = "links", where: Optional[str] = None) -> List[Link]:
+        """Links of a breed, optionally filtered by a NetLogo condition, sorted."""
         return self.report(f"sort {_with(breed, where)}")
 
     def count(self, agents: str = "turtles", where: Optional[str] = None) -> int:
@@ -1055,6 +1076,7 @@ class NetLogo(WidgetsMixin):
         return self.report("shapes")
 
     def link_shapes(self) -> List[str]:
+        """Link shapes available in the model (NetLogo ``link-shapes``)."""
         return self.report("link-shapes")
 
     def import_shapes(self, model: Optional[PathLike] = None, *, overwrite: bool = False) -> List[str]:
@@ -1169,16 +1191,19 @@ class NetLogo(WidgetsMixin):
         self.command(f"import-world {to_netlogo(_path(path))}")
 
     def export_output(self, path: PathLike) -> str:
+        """Save the text of the Output widget to a file (``export-output``); returns its absolute path."""
         path = _path(path)
         self.command(f"export-output {to_netlogo(path)}")
         return path
 
     def export_plot(self, plot: str, path: PathLike) -> str:
+        """Save the data of plot ``plot`` as CSV (``export-plot``); returns the absolute path."""
         path = _path(path)
         self.command(f"export-plot {to_netlogo(plot)} {to_netlogo(path)}")
         return path
 
     def export_all_plots(self, path: PathLike) -> str:
+        """Save the data of every plot as CSV (``export-all-plots``); returns the absolute path."""
         path = _path(path)
         self.command(f"export-all-plots {to_netlogo(path)}")
         return path
@@ -1193,15 +1218,19 @@ class NetLogo(WidgetsMixin):
         self.command(f"output-print {to_netlogo(value)}")
 
     def output_show(self, value: Any) -> None:
+        """Print a value to the Output widget, preceded by ``observer:`` (NetLogo ``output-show``)."""
         self.command(f"output-show {to_netlogo(value)}")
 
     def output_type(self, value: Any) -> None:
+        """Print a value to the Output widget without a new line (NetLogo ``output-type``)."""
         self.command(f"output-type {to_netlogo(value)}")
 
     def output_write(self, value: Any) -> None:
+        """Print a value to the Output widget as NetLogo code, without a new line (NetLogo ``output-write``)."""
         self.command(f"output-write {to_netlogo(value)}")
 
     def clear_output(self) -> None:
+        """Erase the text of the Output widget (NetLogo ``clear-output``)."""
         self.command("clear-output")
 
     # ─── plots ────────────────────────────────────────────────────────────────
@@ -1214,12 +1243,15 @@ class NetLogo(WidgetsMixin):
         return " ".join(parts) + (" " if parts else "")
 
     def set_current_plot(self, plot: str) -> None:
+        """Choose the plot the next plotting commands act on (NetLogo ``set-current-plot``)."""
         self.command(f"set-current-plot {to_netlogo(plot)}")
 
     def set_current_plot_pen(self, pen: str) -> None:
+        """Choose the pen of the current plot the next commands act on (``set-current-plot-pen``)."""
         self.command(f"set-current-plot-pen {to_netlogo(pen)}")
 
     def create_temporary_plot_pen(self, pen: str) -> None:
+        """Create a pen in the current plot and make it current (``create-temporary-plot-pen``)."""
         self.command(f"create-temporary-plot-pen {to_netlogo(pen)}")
 
     def plot(self, y: float, *, plot: Optional[str] = None, pen: Optional[str] = None) -> None:
@@ -1228,6 +1260,7 @@ class NetLogo(WidgetsMixin):
 
     def plotxy(self, x: float, y: float, *, plot: Optional[str] = None,
                pen: Optional[str] = None) -> None:
+        """Add the point (x, y) to the current (or given) plot pen (NetLogo ``plotxy``)."""
         self.command(self._plot_target(plot, pen) + f"plotxy {to_netlogo(x)} {to_netlogo(y)}")
 
     def histogram(self, values: Union[str, Sequence[float]], *, plot: Optional[str] = None,
@@ -1237,12 +1270,15 @@ class NetLogo(WidgetsMixin):
         self.command(self._plot_target(plot, pen) + f"histogram {source}")
 
     def clear_plot(self, plot: Optional[str] = None) -> None:
+        """Erase the current (or given) plot (NetLogo ``clear-plot``)."""
         self.command(self._plot_target(plot, None) + "clear-plot")
 
     def clear_all_plots(self) -> None:
+        """Erase every plot of the model (NetLogo ``clear-all-plots``)."""
         self.command("clear-all-plots")
 
     def set_plot_pen_color(self, color: Any) -> None:
+        """Set the color of the current plot pen (NetLogo ``set-plot-pen-color``)."""
         self.command(f"set-plot-pen-color {to_netlogo(color)}")
 
     def set_plot_pen_mode(self, mode: int) -> None:
@@ -1250,30 +1286,39 @@ class NetLogo(WidgetsMixin):
         self.command(f"set-plot-pen-mode {int(mode)}")
 
     def set_plot_pen_interval(self, interval: float) -> None:
+        """Set how far ``plot`` moves the current pen along x (NetLogo ``set-plot-pen-interval``)."""
         self.command(f"set-plot-pen-interval {to_netlogo(interval)}")
 
     def plot_pen_down(self) -> None:
+        """Put the current plot pen down, so that it draws (NetLogo ``plot-pen-down``)."""
         self.command("plot-pen-down")
 
     def plot_pen_up(self) -> None:
+        """Lift the current plot pen, so that it stops drawing (NetLogo ``plot-pen-up``)."""
         self.command("plot-pen-up")
 
     def plot_pen_reset(self) -> None:
+        """Erase what the current plot pen drew and reset it (NetLogo ``plot-pen-reset``)."""
         self.command("plot-pen-reset")
 
     def set_histogram_num_bars(self, bars: int) -> None:
+        """Set the number of bars of the current pen's histogram (NetLogo ``set-histogram-num-bars``)."""
         self.command(f"set-histogram-num-bars {int(bars)}")
 
     def set_plot_x_range(self, minimum: float, maximum: float) -> None:
+        """Set the bounds of the x axis of the current plot (NetLogo ``set-plot-x-range``)."""
         self.command(f"set-plot-x-range {to_netlogo(minimum)} {to_netlogo(maximum)}")
 
     def set_plot_y_range(self, minimum: float, maximum: float) -> None:
+        """Set the bounds of the y axis of the current plot (NetLogo ``set-plot-y-range``)."""
         self.command(f"set-plot-y-range {to_netlogo(minimum)} {to_netlogo(maximum)}")
 
     def auto_plot_on(self) -> None:
+        """Let the current plot rescale its axes by itself (NetLogo ``auto-plot-on``)."""
         self.command("auto-plot-on")
 
     def auto_plot_off(self) -> None:
+        """Stop the current plot from rescaling its axes (NetLogo ``auto-plot-off``)."""
         self.command("auto-plot-off")
 
     @property
@@ -1282,6 +1327,7 @@ class NetLogo(WidgetsMixin):
         return self.report("plot-name")
 
     def plot_pen_exists(self, name: str) -> bool:
+        """True when the current plot has a pen called ``name`` (NetLogo ``plot-pen-exists?``)."""
         return bool(self.report(f"plot-pen-exists? {to_netlogo(name)}"))
 
     def plot_x_range(self) -> Tuple[float, float]:
@@ -1290,6 +1336,7 @@ class NetLogo(WidgetsMixin):
         return low, high
 
     def plot_y_range(self) -> Tuple[float, float]:
+        """(minimum, maximum) of the y axis of the current plot."""
         low, high = self.report("(list plot-y-min plot-y-max)")
         return low, high
 
@@ -1299,9 +1346,11 @@ class NetLogo(WidgetsMixin):
         return bool(self.report("autoplot?"))
 
     def setup_plots(self) -> None:
+        """Run the setup code of every plot and pen (NetLogo ``setup-plots``)."""
         self.command("setup-plots")
 
     def update_plots(self) -> None:
+        """Run the update code of every plot and pen (NetLogo ``update-plots``)."""
         self.command("update-plots")
 
     # ─── layouts ──────────────────────────────────────────────────────────────
@@ -1324,16 +1373,32 @@ class NetLogo(WidgetsMixin):
         self.command(f"layout-radial {_agentset(turtles)} {_agentset(links)} {root.to_netlogo()}")
 
     def layout_tutte(self, fixed_turtles: Agents, links: Agents, radius: float) -> None:
+        """Tutte layout of a network (NetLogo ``layout-tutte``).
+
+        The three arguments are passed to ``layout-tutte`` in this order.
+
+        Parameters
+        ----------
+        fixed_turtles : str, agent or list of agents
+            First argument of ``layout-tutte`` (a turtle set).
+        links : str, agent or list of agents
+            The links of the network.
+        radius : float
+            Radius of the circle used by the layout.
+        """
         self.command(f"layout-tutte {_agentset(fixed_turtles)} {_agentset(links)} {to_netlogo(radius)}")
 
     # ─── observer ─────────────────────────────────────────────────────────────
     def watch(self, agent: Agent) -> None:
+        """Put the spotlight on an agent in the view (NetLogo ``watch``)."""
         self.command(f"watch {agent.to_netlogo()}")
 
     def follow(self, turtle: Turtle) -> None:
+        """Make the observer follow a turtle (NetLogo ``follow``)."""
         self.command(f"follow {turtle.to_netlogo()}")
 
     def ride(self, turtle: Turtle) -> None:
+        """Make the observer ride a turtle (NetLogo ``ride``)."""
         self.command(f"ride {turtle.to_netlogo()}")
 
     def inspect(self, agent: Agent) -> None:
@@ -1369,6 +1434,7 @@ class NetLogo(WidgetsMixin):
         return self.report(f"max-one-of {_agentset(agents)} [ {reporter} ]")
 
     def min_one_of(self, agents: Agents, reporter: str) -> Optional[Agent]:
+        """The agent with the lowest value of ``reporter``."""
         return self.report(f"min-one-of {_agentset(agents)} [ {reporter} ]")
 
     def max_n_of(self, n: int, agents: Agents, reporter: str) -> List[Agent]:
@@ -1384,6 +1450,7 @@ class NetLogo(WidgetsMixin):
         return self.report(f"sort {_agentset(agents)} with-max [ {reporter} ]")
 
     def with_min(self, agents: Agents, reporter: str) -> List[Agent]:
+        """Every agent holding the minimum of ``reporter``."""
         return self.report(f"sort {_agentset(agents)} with-min [ {reporter} ]")
 
     def sort_on(self, agents: Agents, reporter: str) -> List[Agent]:
@@ -1395,6 +1462,7 @@ class NetLogo(WidgetsMixin):
         return self.report(f"sort {breed}-on {_agentset(agents)}")
 
     def set_default_shape(self, breed: str, shape: str) -> None:
+        """Set the shape given to the new agents of ``breed`` (plural name; NetLogo ``set-default-shape``)."""
         self.command(f"set-default-shape {breed} {to_netlogo(shape)}")
 
     # ─── random numbers (NetLogo's generator, so runs stay reproducible) ──────
@@ -1403,30 +1471,39 @@ class NetLogo(WidgetsMixin):
         return int(self.report(f"random {to_netlogo(n)}"))
 
     def random_float(self, n: float) -> float:
+        """Random float in [0, n) (NetLogo ``random-float``)."""
         return self.report(f"random-float {to_netlogo(n)}")
 
     def random_normal(self, mean: float, standard_deviation: float) -> float:
+        """Random float drawn from a normal distribution (NetLogo ``random-normal``)."""
         return self.report(f"random-normal {to_netlogo(mean)} {to_netlogo(standard_deviation)}")
 
     def random_poisson(self, mean: float) -> int:
+        """Random integer drawn from a Poisson distribution (NetLogo ``random-poisson``)."""
         return int(self.report(f"random-poisson {to_netlogo(mean)}"))
 
     def random_exponential(self, mean: float) -> float:
+        """Random float drawn from an exponential distribution (NetLogo ``random-exponential``)."""
         return self.report(f"random-exponential {to_netlogo(mean)}")
 
     def random_gamma(self, alpha: float, lambda_: float) -> float:
+        """Random float drawn from a gamma distribution of parameters alpha and lambda (``random-gamma``)."""
         return self.report(f"random-gamma {to_netlogo(alpha)} {to_netlogo(lambda_)}")
 
     def random_xcor(self) -> float:
+        """Random x coordinate inside the world (NetLogo ``random-xcor``)."""
         return self.report("random-xcor")
 
     def random_ycor(self) -> float:
+        """Random y coordinate inside the world (NetLogo ``random-ycor``)."""
         return self.report("random-ycor")
 
     def random_pxcor(self) -> int:
+        """Random patch x coordinate, an integer (NetLogo ``random-pxcor``)."""
         return int(self.report("random-pxcor"))
 
     def random_pycor(self) -> int:
+        """Random patch y coordinate, an integer (NetLogo ``random-pycor``)."""
         return int(self.report("random-pycor"))
 
     # ─── colors, angles ───────────────────────────────────────────────────────
@@ -1436,15 +1513,19 @@ class NetLogo(WidgetsMixin):
                            f"{to_netlogo(minimum)} {to_netlogo(maximum)}")
 
     def shade_of(self, color1: float, color2: float) -> bool:
+        """True when the two colors are shades of the same hue (NetLogo ``shade-of?``)."""
         return bool(self.report(f"shade-of? {to_netlogo(color1)} {to_netlogo(color2)}"))
 
     def wrap_color(self, number: float) -> float:
+        """Bring a number into NetLogo's color range, 0 to 140 excluded (NetLogo ``wrap-color``)."""
         return self.report(f"wrap-color {to_netlogo(number)}")
 
     def extract_rgb(self, color: Any) -> List[float]:
+        """``[red, green, blue]`` of a NetLogo color (NetLogo ``extract-rgb``)."""
         return self.report(f"extract-rgb {to_netlogo(color)}")
 
     def extract_hsb(self, color: Any) -> List[float]:
+        """``[hue, saturation, brightness]`` of a NetLogo color (NetLogo ``extract-hsb``)."""
         return self.report(f"extract-hsb {to_netlogo(color)}")
 
     def approximate_rgb(self, red: float, green: float, blue: float) -> float:
@@ -1452,6 +1533,7 @@ class NetLogo(WidgetsMixin):
         return self.report(f"approximate-rgb {to_netlogo(red)} {to_netlogo(green)} {to_netlogo(blue)}")
 
     def approximate_hsb(self, hue: float, saturation: float, brightness: float) -> float:
+        """NetLogo color number closest to an HSB color (NetLogo ``approximate-hsb``)."""
         return self.report(f"approximate-hsb {to_netlogo(hue)} {to_netlogo(saturation)} "
                            f"{to_netlogo(brightness)}")
 
@@ -1465,6 +1547,7 @@ class NetLogo(WidgetsMixin):
 
     # ─── timer, clock, sound ──────────────────────────────────────────────────
     def reset_timer(self) -> None:
+        """Set NetLogo's timer back to zero (NetLogo ``reset-timer``)."""
         self.command("reset-timer")
 
     @property
@@ -1473,40 +1556,52 @@ class NetLogo(WidgetsMixin):
         return self.report("timer")
 
     def date_and_time(self) -> str:
+        """Current date and time as a string (NetLogo ``date-and-time``)."""
         return self.report("date-and-time")
 
     def beep(self) -> None:
+        """Emit a beep (NetLogo ``beep``)."""
         self.command("beep")
 
     # ─── files read and written by NetLogo ────────────────────────────────────
     def file_open(self, path: PathLike) -> None:
+        """Open a file for the ``file_*`` methods, reading or writing (NetLogo ``file-open``)."""
         self.command(f"file-open {to_netlogo(_path(path))}")
 
     def file_close(self) -> None:
+        """Close the current file (NetLogo ``file-close``)."""
         self.command("file-close")
 
     def file_close_all(self) -> None:
+        """Close every file opened by NetLogo (NetLogo ``file-close-all``)."""
         self.command("file-close-all")
 
     def file_flush(self) -> None:
+        """Write the pending output of the open files to disk (NetLogo ``file-flush``)."""
         self.command("file-flush")
 
     def file_delete(self, path: PathLike) -> None:
+        """Delete a file (NetLogo ``file-delete``)."""
         self.command(f"file-delete {to_netlogo(_path(path))}")
 
     def file_exists(self, path: PathLike) -> bool:
+        """True when the file exists (NetLogo ``file-exists?``)."""
         return bool(self.report(f"file-exists? {to_netlogo(_path(path))}"))
 
     def file_print(self, value: Any) -> None:
+        """Write a value and a new line to the open file (NetLogo ``file-print``)."""
         self.command(f"file-print {to_netlogo(value)}")
 
     def file_show(self, value: Any) -> None:
+        """Write a value to the open file, preceded by ``observer:`` (NetLogo ``file-show``)."""
         self.command(f"file-show {to_netlogo(value)}")
 
     def file_type(self, value: Any) -> None:
+        """Write a value to the open file without a new line (NetLogo ``file-type``)."""
         self.command(f"file-type {to_netlogo(value)}")
 
     def file_write(self, value: Any) -> None:
+        """Write a value to the open file as NetLogo code, readable by :meth:`file_read` (``file-write``)."""
         self.command(f"file-write {to_netlogo(value)}")
 
     def file_read(self) -> Any:
@@ -1514,33 +1609,41 @@ class NetLogo(WidgetsMixin):
         return self.report("file-read")
 
     def file_read_line(self) -> str:
+        """Next line of the open file (NetLogo ``file-read-line``)."""
         return self.report("file-read-line")
 
     def file_read_characters(self, count: int) -> str:
+        """Next ``count`` characters of the open file (NetLogo ``file-read-characters``)."""
         return self.report(f"file-read-characters {int(count)}")
 
     @property
     def file_at_end(self) -> bool:
+        """True when the open file has nothing left to read (NetLogo ``file-at-end?``)."""
         return bool(self.report("file-at-end?"))
 
     def set_current_directory(self, path: PathLike) -> None:
+        """Set the folder used by NetLogo's file primitives (NetLogo ``set-current-directory``)."""
         self.command(f"set-current-directory {to_netlogo(_path(path))}")
 
     # ─── mouse and dialogs (NetLogo window) ───────────────────────────────────
     @property
     def mouse_down(self) -> bool:
+        """True while the mouse button is down in the view (NetLogo ``mouse-down?``)."""
         return bool(self.report("mouse-down?"))
 
     @property
     def mouse_inside(self) -> bool:
+        """True while the mouse pointer is inside the view (NetLogo ``mouse-inside?``)."""
         return bool(self.report("mouse-inside?"))
 
     @property
     def mouse_xcor(self) -> float:
+        """x coordinate of the mouse in the view (NetLogo ``mouse-xcor``)."""
         return self.report("mouse-xcor")
 
     @property
     def mouse_ycor(self) -> float:
+        """y coordinate of the mouse in the view (NetLogo ``mouse-ycor``)."""
         return self.report("mouse-ycor")
 
     def user_message(self, message: Any) -> None:
@@ -1548,12 +1651,15 @@ class NetLogo(WidgetsMixin):
         self.command(f"user-message {to_netlogo(message)}")
 
     def user_input(self, message: Any) -> str:
+        """Ask the user for a text in a dialog and return it (NetLogo ``user-input``)."""
         return self.report(f"user-input {to_netlogo(message)}")
 
     def user_yes_or_no(self, message: Any) -> bool:
+        """Ask the user a yes/no question; True for yes (NetLogo ``user-yes-or-no?``)."""
         return bool(self.report(f"user-yes-or-no? {to_netlogo(message)}"))
 
     def user_one_of(self, message: Any, choices: Sequence[Any]) -> Any:
+        """Ask the user to pick one of ``choices`` and return it (NetLogo ``user-one-of``)."""
         return self.report(f"user-one-of {to_netlogo(message)} {to_netlogo(list(choices))}")
 
     def user_file(self) -> Optional[str]:
@@ -1561,17 +1667,21 @@ class NetLogo(WidgetsMixin):
         return self.report("user-file") or None
 
     def user_new_file(self) -> Optional[str]:
+        """Ask for the name of a new file; None if the user cancels."""
         return self.report("user-new-file") or None
 
     def user_directory(self) -> Optional[str]:
+        """Ask for a folder; None if the user cancels."""
         return self.report("user-directory") or None
 
     def reset_perspective(self) -> None:
+        """Stop watching, following or riding: the observer looks at the world center again (``reset-perspective``)."""
         self.command("reset-perspective")
 
     # ─── information ──────────────────────────────────────────────────────────
     @property
     def netlogo_version(self) -> str:
+        """Version of the running NetLogo, e.g. ``'6.3.0'`` (NetLogo ``netlogo-version``)."""
         return self.report("netlogo-version")
 
 
@@ -1597,6 +1707,7 @@ class Globals:
         return len(self._nl.global_names())
 
     def keys(self) -> List[str]:
+        """Names of the globals (lower case)."""
         return self._nl.global_names()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1605,6 +1716,7 @@ class Globals:
         return dict(zip(names, self._nl.report(names))) if names else {}
 
     def items(self) -> List[Tuple[str, Any]]:
+        """``(name, value)`` pairs of every global."""
         return list(self.to_dict().items())
 
     def __repr__(self) -> str:

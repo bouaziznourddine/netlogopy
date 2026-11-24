@@ -318,7 +318,8 @@ class WidgetsMixin:
         def find() -> Any:
             for component in panel.getComponents():
                 widget = component.widget() if hasattr(component, "widget") else None
-                if widget is not None and hasattr(widget, "keyTriggered")                         and str(widget.displayName()) == label:
+                if (widget is not None and hasattr(widget, "keyTriggered")
+                        and str(widget.displayName()) == label):
                     return widget
             return None
 

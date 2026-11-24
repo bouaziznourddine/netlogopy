@@ -15,6 +15,19 @@ from .errors import NetLogoError
 
 
 def main(argv=None) -> int:
+    """Print the versions netlogopy uses and try to start NetLogo headless.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments (default: ``sys.argv[1:]``); the first one,
+        if any, is the NetLogo folder.
+
+    Returns
+    -------
+    int
+        0 when NetLogo started, 1 when something is missing or failed.
+    """
     argv = sys.argv[1:] if argv is None else argv
     print(f"netlogopy {__version__}")
     print(f"Python    {sys.version.split()[0]} ({platform.system()}, {platform.architecture()[0]})")

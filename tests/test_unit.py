@@ -5,11 +5,9 @@ import platform
 
 import pytest
 
-from netlogopy import Code, NetLogoNotFoundError, colors, list2nllist, parameter_grid, to_netlogo
-from netlogopy import _java
+from netlogopy import Code, NetLogoNotFoundError, _java, colors, list2nllist, parameter_grid, to_netlogo
 from netlogopy.agents import Link, Patch, Turtle, assignments, variable_name
 from netlogopy.core import BUNDLED_MODEL, BUNDLED_MODEL_NLOGOX, bundled_model
-
 
 # ─── to_netlogo ────────────────────────────────────────────────────────────────
 
