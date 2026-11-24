@@ -5,7 +5,8 @@ import os
 import pytest
 
 import netlogopy.netlogopy as legacy
-from conftest import EXAMPLES, WOLF_MODEL
+from conftest import EXAMPLES, FIRE_MODEL, WOLF_MODEL
+from netlogopy import NetLogo, NetLogoCompileError
 
 pytestmark = pytest.mark.netlogo
 
@@ -172,6 +173,46 @@ def test_external_model_with_base_nls():
         assert observer.alive and observer.get_shape() == "circle"
     finally:
         n.close_model()
+
+
+def test_external_model_gets_netlogopy_shapes():
+    plain = NetLogo(FIRE_MODEL)
+    try:
+        assert "person_0" not in plain.shapes()
+        added = plain.import_shapes()
+        assert "person_0" in added and "person_0" in plain.shapes() and plain.import_shapes() == []
+    finally:
+        plain.close()
+    n = legacy.run_netlogo(None, FIRE_MODEL, gui=False)
+    try:
+        operator = legacy.pyturtle(n, x=3, y=3, shape="person_0", name="operator")
+        assert operator.get_shape() == "person_0"
+    finally:
+        n.close_model()
+
+
+def test_model_without_base_nls_says_what_to_do(tmp_path):
+    with open(FIRE_MODEL, encoding="utf-8") as source:
+        code = source.read().replace('__includes [ "base.nls" ]', "")
+    model = tmp_path / "fire.nlogo"
+    model.write_text(code, encoding="utf-8")
+    n = legacy.run_netlogo(None, str(model), gui=False)
+    try:
+        with pytest.raises(NetLogoCompileError, match="base.nls"):
+            legacy.pyturtle(n, x=0, y=0)
+        a, b = n.create_turtles(2)
+        with pytest.raises(NetLogoCompileError, match="base.nls"):
+            legacy.street(n, a, b)
+    finally:
+        n.close_model()
+
+
+def test_base_nls_copies_are_the_packaged_file():
+    packaged = os.path.join(os.path.dirname(legacy.__file__), "base.nls")
+    for model in (FIRE_MODEL, WOLF_MODEL):
+        copy = os.path.join(os.path.dirname(model), "base.nls")
+        with open(packaged, "rb") as first, open(copy, "rb") as second:
+            assert first.read().split() == second.read().split()
 
 
 def test_run_netlogo_honours_netlogopy_headless(monkeypatch):

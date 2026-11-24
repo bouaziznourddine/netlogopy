@@ -78,11 +78,25 @@ def run_netlogo_base(netlogo_home: Optional[str] = None) -> NetLogo:
 
 def run_netlogo_model(netlogo_home: Optional[str], path_model: str = "",
                       gui: Optional[bool] = None) -> NetLogo:
-    """Open a model WITHOUT running setup (to configure its widgets first)."""
+    """Open a model WITHOUT running setup (to configure its widgets first).
+
+    A model of your own also receives netlogopy's shapes (car, person_0,
+    machine...) for the session, so pyturtles look the same in every model.
+    """
     list_pyturtle.clear()
     list_street.clear()
-    return NetLogo(path_model or None, gui=_default_gui() if gui is None else gui,
-                   netlogo_home=netlogo_home)
+    nl = NetLogo(path_model or None, gui=_default_gui() if gui is None else gui,
+                 netlogo_home=netlogo_home)
+    if path_model:
+        nl.import_shapes()
+    return nl
+
+
+def _require_breed(n: NetLogo, kind: str, breed: str) -> None:
+    if breed not in n.breeds()[kind]:
+        raise NetLogoCompileError(
+            f"this model has no '{breed}' breed: add  __includes [ \"base.nls\" ]  at the top of "
+            f"its Code tab and copy base.nls next to it with reset_base_file(folder)")
 
 
 def reset_base_file(dest: str) -> None:
@@ -478,6 +492,7 @@ class pyturtle(turtle):
     def __init__(self, n: NetLogo, x: float = 0, y: float = 0, shape: str = "car",
                  size_shape: float = 4, color: float = 0, name: str = "zn",
                  labelcolor: float = 0, fields: Optional[dict] = None):
+        _require_breed(n, "turtles", "pyturtles")
         created = n.create_turtles(1, "pyturtles", ordered=True, xcor=x, ycor=y, shape=shape,
                                    size=size_shape, color=color, label=name,
                                    label_color=labelcolor)
@@ -498,6 +513,7 @@ class street(Link):
     def __init__(self, n: NetLogo, fromm: Turtle, too: Turtle, label: str = "street",
                  labelcolor: float = 0, color: float = 0, shape: str = "default",
                  thickness: float = 0.5):
+        _require_breed(n, "links", "streets")
         link = n.create_link(fromm, too, directed=True, breed="streets", label=label,
                              label_color=labelcolor, color=color, shape=shape,
                              thickness=thickness)

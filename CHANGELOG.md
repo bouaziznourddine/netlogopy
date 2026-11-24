@@ -42,6 +42,9 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
   `with_max`, `turtles_on`...), NetLogo's random numbers, color conversions,
   NetLogo file I/O (`file_open`, `file_read`...), timer, mouse, user dialogs,
   `inspect`, `uphill` / `downhill`, link queries (`in_link_from`, `is_link_neighbor`...).
+- `import_shapes()` copies the shapes of the bundled model (or of any model)
+  into the open model; `run_netlogo()` does it for a model of your own, so
+  `pyturtle(shape="person_0")` works in every model.
 - **NetLogo 7** support (tested with NetLogo 6.2.2, 6.3.0 and 7.0.0); the
   bundled model also ships in the `.nlogox` format. NetLogo and Java are found
   automatically (`NETLOGO_HOME`, `JAVA_HOME`, the newest NetLogo installed).
@@ -67,6 +70,8 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 - `base.nls` now only declares the `pyturtles` and `streets` breeds: the
   reporters it used to define are no longer needed by netlogopy, and its
   `extensions` and `globals` declarations clashed with the models including it.
+- `pyturtle` and `street` in a model that does not include `base.nls` raise an
+  error that says what to add.
 - `run_netlogo()` finds NetLogo by itself; `netlogo_home` is optional.
 - Python 3.8+ (was 3.6+); the only dependency is JPype1.
 - Packaging: `pyproject.toml` is the only source of metadata, with an SPDX

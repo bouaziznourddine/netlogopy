@@ -4,6 +4,11 @@
 ; Copy it next to your model (netlogopy.reset_base_file(folder) does it)
 ; and add this line at the top of the model's Code tab:
 ;     __includes [ "base.nls" ]
+; (a model that already includes files adds "base.nls" to its list).
+;
+; The model must not declare these two breeds itself.  Shapes cannot be
+; stored in an include file: netlogopy copies its shapes (car, person_0,
+; machine...) into the model when it opens it.
 
 breed [ pyturtles pyturtle ]
 directed-link-breed [ streets street ]

@@ -306,7 +306,14 @@ from netlogopy import reset_base_file
 reset_base_file("folder/of/your/model")      # copies base.nls there
 ```
 
-then add `__includes [ "base.nls" ]` at the top of the model's Code tab.
+then add `__includes [ "base.nls" ]` at the top of the model's Code tab. The
+model must not declare these two breeds itself; without the include, `pyturtle`
+and `street` raise an error that says what to add.
+
+An include file cannot hold shapes, so `run_netlogo(home, "your-model.nlogo")`
+copies netlogopy's shapes (`car`, `person_0`, `machine`...) into your model for
+the session. With the `NetLogo` class, call `nl.import_shapes()` (or
+`nl.import_shapes("other-model.nlogo")` to take the shapes of any model).
 
 ## API reference
 
@@ -321,7 +328,7 @@ then add `__includes [ "base.nls" ]` at the top of the model's Code tab.
 | Ticks | `ticks`, `tick`, `tick_advance`, `reset_ticks`, `clear_ticks` |
 | Globals | `globals[...]`, `get_global`, `set_global`, `global_names` |
 | World | `min_pxcor`, `max_pxcor`, `min_pycor`, `max_pycor`, `world_width`, `world_height`, `resize_world`, `patch_size`, `set_patch_size`, `wrap_x`, `wrap_y`, `set_topology`, `random_seed`, `new_seed`, `clear_all`, `clear_turtles`, `clear_patches`, `clear_links`, `clear_globals`, `clear_drawing`, `display`, `no_display` |
-| Agents | `turtle`, `patch`, `link`, `turtles`, `patches`, `links`, `count`, `ask`, `of`, `create_turtles`, `create_link`, `breeds`, `shapes`, `link_shapes`, `set_default_shape` |
+| Agents | `turtle`, `patch`, `link`, `turtles`, `patches`, `links`, `count`, `ask`, `of`, `create_turtles`, `create_link`, `breeds`, `shapes`, `link_shapes`, `import_shapes`, `set_default_shape` |
 | Choosing agents | `any`, `all`, `one_of`, `n_of`, `max_one_of`, `min_one_of`, `max_n_of`, `min_n_of`, `with_max`, `with_min`, `sort_on`, `turtles_on` |
 | Random numbers | `random`, `random_float`, `random_normal`, `random_poisson`, `random_exponential`, `random_gamma`, `random_xcor`, `random_ycor`, `random_pxcor`, `random_pycor` |
 | Colors, angles | `scale_color`, `shade_of`, `wrap_color`, `extract_rgb`, `extract_hsb`, `approximate_rgb`, `approximate_hsb`, `hsb`, `subtract_headings` |

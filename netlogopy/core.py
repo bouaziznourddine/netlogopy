@@ -89,6 +89,13 @@ def _agentset(agents: Agents) -> str:
     return f"({primitive} " + " ".join(agent.to_netlogo() for agent in agents) + ")"
 
 
+def _iterate(collection: Any) -> Iterator[Any]:
+    """Iterate a Scala collection."""
+    iterator = collection.iterator()
+    while iterator.hasNext():
+        yield iterator.next()
+
+
 def _with(agents: str, where: Optional[str]) -> str:
     return f"({agents}) with [ {where} ]" if where else f"({agents})"
 
@@ -790,6 +797,32 @@ class NetLogo:
 
     def link_shapes(self) -> List[str]:
         return self.report("link-shapes")
+
+    def import_shapes(self, model: Optional[PathLike] = None, *, overwrite: bool = False) -> List[str]:
+        """Copy the turtle and link shapes of another model into this one.
+
+        ``model`` defaults to the model bundled with netlogopy (car, person_0,
+        machine...).  Shapes this model already has are kept unless
+        ``overwrite``.  Returns the names of the turtle shapes added.  The copy
+        lasts for the session; the model file is not changed.
+        """
+        added: List[str] = []
+        with NetLogo(model, netlogo_home=self.netlogo_home) as source:
+            def copy() -> None:
+                for kind in ("turtleShapes", "linkShapes"):
+                    target = getattr(self._ws.world(), kind)()
+                    existing = {str(name) for name in _iterate(target.shapeList().names())}
+                    for shape in _iterate(getattr(source._ws.world(), kind)().shapeList().shapes()):
+                        name = str(shape.name())
+                        if overwrite or name not in existing:
+                            target.add(shape)
+                            if kind == "turtleShapes":
+                                added.append(name)
+            if self.gui:
+                _java.run_on_edt(copy)
+            else:
+                copy()
+        return sorted(added)
 
     # ─── patches in bulk ──────────────────────────────────────────────────────
     _GRID = ("map [ __y -> map [ __x -> [{var}] of patch __x __y ] "
