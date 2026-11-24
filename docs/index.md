@@ -3,22 +3,29 @@ hide:
   - navigation
 ---
 
-# netlogopy
+# netlogopy { .home-title }
 
-**Drive [NetLogo](https://ccl.northwestern.edu/netlogo/) models from Python.**
-netlogopy combines NetLogo's agent-based simulation environment with Python's
-libraries for computation, optimisation and AI: create and move agents from
-Python, read any NetLogo value as a Python value, run experiments in parallel
-and collect data, in the NetLogo window or headless.
+![netlogopy: nine NetLogo turtles, moved by Python, write the word NETLOGOPY](assets/gifs/draw-netlogopy.gif){ .home-banner }
 
-<div class="demo-grid" markdown>
+**Run [NetLogo](https://ccl.northwestern.edu/netlogo/) models from Python, and
+let Python decide, optimise, learn and measure inside the simulation.**
+NetLogo runs inside the Python process, in its own window or headless, and
+every NetLogo value, agent and widget is reachable from Python: create and
+move agents, read any value as a Python value, run experiments in parallel
+and collect data.
+
+<div class="demo-grid demo-grid-3" markdown>
 <figure markdown>
 ![Epidemic with a Python vaccination policy](assets/gifs/python-policy.gif)
-<figcaption>NetLogo simulates an epidemic, a Python policy decides who is vaccinated (<a href="examples/#python-policy">example 38</a>)</figcaption>
+<figcaption>An epidemic: a Python policy decides who is vaccinated (<a href="examples/#python-policy">example 38</a>)</figcaption>
 </figure>
 <figure markdown>
-![Wolf Sheep Predation with Python agents](assets/gifs/wolf-sheep-with-python-agents.gif)
-<figcaption>An existing NetLogo model (Wolf Sheep Predation) with two cars driven by Python</figcaption>
+![A robot learns to cross a maze](assets/gifs/q-learning.gif)
+<figcaption>Reinforcement learning: NetLogo is the maze, Python the learner (<a href="examples/#q-learning">example 40</a>)</figcaption>
+</figure>
+<figure markdown>
+![Cars routed by Python](assets/gifs/shortest-routes.gif)
+<figcaption>Routing: Dijkstra in Python on a NetLogo road network (<a href="examples/#routes">example 41</a>)</figcaption>
 </figure>
 </div>
 

@@ -32,3 +32,23 @@ img.demo {
   margin-top: 0.3rem;
   text-align: center;
 }
+
+.demo-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.home-banner {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 1rem;
+  border-radius: 6px;
+}
+
+.md-typeset h1.home-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
