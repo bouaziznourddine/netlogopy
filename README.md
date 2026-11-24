@@ -264,6 +264,14 @@ If you use netlogopy in your research, please cite:
 }
 ```
 
+## History and acknowledgements
+
+Versions 0.x of netlogopy were a layer of agent classes on top of [NL4Py](https://github.com/chathika/NL4Py)
+(Gunaratne and Garibay, *NL4Py: Agent-based modeling in Python with parallelizable NetLogo workspaces*, SoftwareX 16, 2021, [doi:10.1016/j.softx.2021.100801](https://doi.org/10.1016/j.softx.2021.100801)), which started NetLogo behind a Java server and sent it commands.
+We thank its authors for the work the first versions relied on. Since 1.0,
+netlogopy talks to NetLogo's own Java API through JPype and no longer depends
+on NL4Py.
+
 ## License
 
 netlogopy is under the [MIT License](https://github.com/bouaziznourddine/netlogopy/blob/main/LICENSE). It does not include NetLogo:

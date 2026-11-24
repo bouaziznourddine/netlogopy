@@ -44,3 +44,12 @@ converted from Java to Python values (numbers, strings, lists, agents).
 - No NetLogo window on macOS (AWT must own the main thread there); headless
   sessions work.
 - NetLogo 3D is not supported.
+
+## History
+
+Versions 0.x of netlogopy were a layer of agent classes on top of [NL4Py](https://github.com/chathika/NL4Py)
+(Gunaratne and Garibay, *NL4Py: Agent-based modeling in Python with parallelizable NetLogo workspaces*, SoftwareX 16, 2021, [doi:10.1016/j.softx.2021.100801](https://doi.org/10.1016/j.softx.2021.100801)), which started NetLogo behind a Java server, reached through Py4J,
+and sent it commands. We thank its authors for the work the first versions
+relied on. Version 1.0 is a new implementation on NetLogo's own Java API, in
+the Python process, and no longer depends on NL4Py; scripts written for 0.x
+keep working ([The 0.x API](guide/legacy.md)).

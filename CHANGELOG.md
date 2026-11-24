@@ -121,4 +121,6 @@ and covers the whole NetLogo language. Scripts written for 0.x keep working.
 
 ### Removed
 
-- The Java server dependency, `setup.py`, build artifacts and stray files from the repository.
+- The dependency on [NL4Py](https://github.com/chathika/NL4Py), which 0.x used to start NetLogo behind a Java server and send it
+  commands; thanks to its authors (Gunaratne and Garibay, *NL4Py: Agent-based modeling in Python with parallelizable NetLogo workspaces*, SoftwareX 16, 2021, [doi:10.1016/j.softx.2021.100801](https://doi.org/10.1016/j.softx.2021.100801)).
+- `setup.py`, build artifacts and stray files from the repository.
