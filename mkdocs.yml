@@ -4,7 +4,7 @@ site_url: https://bouaziznourddine.github.io/netlogopy/
 repo_url: https://github.com/bouaziznourddine/netlogopy
 repo_name: bouaziznourddine/netlogopy
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; 2024-2026 Nourddine Bouaziz - MIT License
+copyright: Copyright &copy; 2024-2026 The netlogopy developers - MIT License
 
 theme:
   name: material

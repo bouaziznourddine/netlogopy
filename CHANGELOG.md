@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- The package is credited to "The netlogopy developers".
+- The package description on PyPI no longer says that 1.0 is not published.
+
 ## 1.0.0
 
 A rewrite of the engine: netlogopy now runs NetLogo inside the Python process

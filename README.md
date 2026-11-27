@@ -254,5 +254,3 @@ GPL applies to that distribution.
 The Fire and Wolf Sheep Predation models in `Examples/complexe` come from the
 NetLogo Models Library (Copyright 1997 Uri Wilensky,
 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)).
-
-Developed by **Nourddine Bouaziz** ([@bouaziznourddine](https://github.com/bouaziznourddine)).

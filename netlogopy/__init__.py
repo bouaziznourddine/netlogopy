@@ -122,6 +122,5 @@ __all__ = [
     "turtle", "pyturtle", "street", "PyTurtle", "Street",
 ]
 
-__version__ = "1.0.0"
-__author__  = "Nourddine Bouaziz"
-__email__   = "nourddine.bouaziz.dz@gmail.com"
+__version__ = "1.0.1"
+__author__  = "The netlogopy developers"
