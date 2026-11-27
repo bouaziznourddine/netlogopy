@@ -208,8 +208,9 @@ def test_variables_without_netlogo_code(nl):
     patch = nl.patch(2, 3)
     patch.pcolor = 250
     assert patch.pcolor == 110
+    assert nl.patch(1000, 1000) is None            # outside the world
     with pytest.raises(NetLogoRuntimeError):
-        nl.patch(1000, 1000).pcolor = 15
+        Patch(nl, 1000, 1000).pcolor = 15
     breeded = nl.create_turtles(1, "pyturtles")[0]
     nl.command("ask turtle 0 [ die ]")
     with pytest.raises(NetLogoRuntimeError):

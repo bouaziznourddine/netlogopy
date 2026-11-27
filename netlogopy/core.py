@@ -11,8 +11,10 @@ primitive stays reachable through :meth:`NetLogo.command` and
 :meth:`NetLogo.report`; the other methods are typed shortcuts for them.
 """
 
+import math
 import os
 import threading
+import warnings
 import weakref
 from collections import OrderedDict
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
@@ -51,6 +53,18 @@ def _java_message(exc: Any) -> str:
     return str(message) if message is not None else str(exc)
 
 
+def _java_context(exc: Any, message: str) -> Optional[str]:
+    """What NetLogo adds to a runtime error: the agent, the primitive, the calling procedures."""
+    try:
+        full = str(exc.runtimeErrorMessage())
+    except Exception:
+        return None
+    if full.startswith(message):
+        full = full[len(message):]
+    lines = [line.strip() for line in full.splitlines()]
+    return "\n".join(line for line in lines if line and "__EVALUATOR" not in line) or None
+
+
 def _error_from_java(exc: Any, source: Optional[str]) -> NetLogoError:
     message = _java_message(exc)
     class_name = ""
@@ -62,7 +76,7 @@ def _error_from_java(exc: Any, source: Optional[str]) -> NetLogoError:
         return NetLogoRuntimeError(message[len("Runtime error: "):], source)
     if class_name.endswith("CompilerException"):
         return NetLogoCompileError(message, source)
-    return NetLogoRuntimeError(message, source)
+    return NetLogoRuntimeError(message, source, _java_context(exc, message))
 
 
 def _path(path: PathLike) -> str:
@@ -74,20 +88,63 @@ def headless_forced() -> bool:
     return os.environ.get("NETLOGOPY_HEADLESS", "").strip().lower() in ("1", "true", "yes", "on")
 
 
-def _agentset(agents: Agents) -> str:
-    """NetLogo agentset expression for a string, an agent or a list of agents."""
+def _c(code: str) -> str:
+    """``code`` ready to be followed by a closing bracket.
+
+    A NetLogo comment (``;``) runs to the end of the line, so code that holds
+    one gets a new line: the comment must not swallow the bracket.
+    """
+    return code + "\n" if ";" in code else code
+
+
+def _agents(agents: Any) -> Any:
+    """NetLogo code (a string) unchanged; an agent or an iterable of agents as a list."""
     if isinstance(agents, str):
-        return f"({agents})"
+        return agents
     if isinstance(agents, Agent):
-        agents = [agents]
-    agents = list(agents)
-    kinds = {agent.kind for agent in agents}
+        return [agents]
+    return list(agents)
+
+
+def _same_session(agents: Sequence[Agent], nl: Any) -> None:
+    """Refuse the agents of another session: their numbers would designate other agents here."""
+    for agent in agents:
+        if agent.nl is not nl:
+            raise ValueError(f"{agent!r} belongs to another NetLogo session")
+
+
+def _who_list(agents: Sequence[Agent]) -> str:
+    return "[" + " ".join(str(agent.who) for agent in agents) + "]"
+
+
+def _xy_list(agents: Sequence[Agent]) -> str:
+    return "[" + " ".join(f"[{agent.pxcor} {agent.pycor}]" for agent in agents) + "]"
+
+
+def _agentset(agents: Agents, empty: str = "no-turtles", nl: Any = None) -> str:
+    """NetLogo agentset expression for a string, an agent or a list of agents.
+
+    A list is written as numbers (who numbers, patch coordinates) rather than
+    as one expression per agent, so that long lists stay small and fast to
+    compile.  ``empty`` is the agentset an empty list stands for.
+    """
+    agents = _agents(agents)
+    if isinstance(agents, str):
+        return f"({_c(agents)})"
     if not agents:
-        return "no-turtles"
+        return empty
+    kinds = {agent.kind for agent in agents}
     if len(kinds) > 1:
         raise TypeError("an agentset cannot mix turtles, patches and links")
-    primitive = {"turtle": "turtle-set", "patch": "patch-set", "link": "link-set"}[kinds.pop()]
-    return f"({primitive} " + " ".join(agent.to_netlogo() for agent in agents) + ")"
+    if nl is not None:
+        _same_session(agents, nl)
+    kind = kinds.pop()
+    if len(agents) <= 4 or kind == "link":
+        primitive = {"turtle": "turtle-set", "patch": "patch-set", "link": "link-set"}[kind]
+        return f"({primitive} " + " ".join(agent.to_netlogo() for agent in agents) + ")"
+    if kind == "turtle":
+        return f"(turtle-set map [ __w -> turtle __w ] {_who_list(agents)})"
+    return f"(patch-set map [ __p -> patch first __p last __p ] {_xy_list(agents)})"
 
 
 def _iterate(collection: Any) -> Iterator[Any]:
@@ -98,7 +155,7 @@ def _iterate(collection: Any) -> Iterator[Any]:
 
 
 def _with(agents: str, where: Optional[str]) -> str:
-    return f"({agents}) with [ {where} ]" if where else f"({agents})"
+    return f"({_c(agents)}) with [ {_c(where)} ]" if where else f"({_c(agents)})"
 
 
 def _named_reporters(reporters: Union[str, Sequence[str], Mapping[str, str]]
@@ -111,14 +168,26 @@ def _named_reporters(reporters: Union[str, Sequence[str], Mapping[str, str]]
     return reporters, reporters
 
 
-def _table(columns: Dict[str, list], as_dataframe: bool) -> Any:
-    if not as_dataframe:
-        return columns
+def _require_pandas() -> Any:
+    """pandas, or a clear ImportError: called before a run whose result must be a DataFrame."""
     try:
         import pandas
     except ImportError as exc:
         raise ImportError("as_dataframe=True needs pandas: pip install pandas") from exc
-    return pandas.DataFrame(columns)
+    return pandas
+
+
+def _table(columns: Dict[str, list], as_dataframe: bool) -> Any:
+    if not as_dataframe:
+        return columns
+    return _require_pandas().DataFrame(columns)
+
+
+def _dispose_handle(box: List[Any]) -> None:
+    """Free the workspace of a headless session that was dropped without ``close()``."""
+    handle, box[0] = box[0], None
+    if handle is not None:
+        handle.close()
 
 
 class _BackgroundRun(threading.Thread):
@@ -135,6 +204,7 @@ class _BackgroundRun(threading.Thread):
         self.steps = 0
         self.error: Optional[BaseException] = None
         self.stop_requested = threading.Event()
+        self.halted = False                        # set by halt(): the step in progress was cut
         self.resumed = threading.Event()
         self.resumed.set()
 
@@ -150,11 +220,15 @@ class _BackgroundRun(threading.Thread):
                     if self.until and self.nl.report(self.until):
                         break
                     self.nl.command(self.command)
+                    if self.halted:                # an interrupted step is not a step made
+                        break
                     self.steps += 1
                 if self.interval:
                     self.stop_requested.wait(self.interval)
         except BaseException as exc:               # re-raised by stop() / wait()
             self.error = exc
+        finally:
+            _java.detach_thread()                  # or the JVM keeps a thread for this one
 
 
 class NetLogo(WidgetsMixin):
@@ -202,6 +276,9 @@ class NetLogo(WidgetsMixin):
                  jvm_args: Sequence[str] = (), setup: bool = False):
         self.gui = bool(gui) and not headless_forced()
         self.model_path: Optional[str] = None
+        if model is not None and not os.path.isfile(_path(model)):
+            # Checked before anything starts: a process can open the NetLogo window only once.
+            raise FileNotFoundError(f"NetLogo model not found: {_path(model)}")
         self._lock = threading.RLock()
         self._cache: "OrderedDict[Tuple[bool, str], Any]" = OrderedDict()
         self._owner: Any = None
@@ -209,6 +286,9 @@ class NetLogo(WidgetsMixin):
         self._singulars: Dict[str, str] = {}
         self._handle: Optional[_java.WorkspaceHandle] = None
         self._runner: Optional[_BackgroundRun] = None
+        self._directory: Optional[str] = None      # set by set_current_directory()
+        self._procedures_id = 0                    # identity of the compiled model (window mode)
+        self._handle_box: List[Any] = [None]       # the headless workspace, for the finalizer below
         self.netlogo_home = _java.ensure_jvm(
             os.fspath(netlogo_home) if netlogo_home else None,
             os.fspath(java_home) if java_home else None,
@@ -216,7 +296,11 @@ class NetLogo(WidgetsMixin):
         import jpype
         self._java_exception = jpype.JException
         self._throwable = jpype.JClass("java.lang.Throwable")
+        self._system = jpype.JClass("java.lang.System")
         _java.ensure_context_class_loader()
+        if not self.gui:
+            # A session dropped without close() frees its workspace when it is collected.
+            weakref.finalize(self, _dispose_handle, self._handle_box)
         if self.gui:
             self._app = _java.launch_gui()
             self._ws = self._app.workspace()
@@ -240,7 +324,10 @@ class NetLogo(WidgetsMixin):
         path = _path(path)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"NetLogo model not found: {path}")
-        self.stop()                                # a background run ends with its model
+        try:
+            self.stop()                            # a background run ends with its model
+        except Exception as exc:                   # the error of that run must not keep this model closed
+            warnings.warn(f"the background run ended with an error: {exc}", RuntimeWarning, stacklevel=2)
         with self._lock:
             if self.gui:
                 self._check_open()
@@ -262,6 +349,7 @@ class NetLogo(WidgetsMixin):
                         raise
                     handle.owner = weakref.ref(self)
                     previous, self._ws, self._handle = self._handle, workspace, handle
+                    self._handle_box[0] = handle
                     if previous is not None:
                         previous.close()
             except self._java_exception as exc:
@@ -270,6 +358,8 @@ class NetLogo(WidgetsMixin):
             self._cache.clear()
             self._singulars.clear()
             self._owner = None
+            self._directory = None
+            self._procedures_id = self._procedures_identity()
             self.model_path = path
         return self
 
@@ -277,6 +367,7 @@ class NetLogo(WidgetsMixin):
         """Dispose the workspace (closes the window in GUI mode). Idempotent."""
         self._stop_quietly()
         handle, self._handle = self._handle, None
+        self._handle_box[0] = None
         self._cache.clear()
         if handle is not None:
             handle.close()
@@ -302,7 +393,31 @@ class NetLogo(WidgetsMixin):
 
     def _check_open(self) -> None:
         if self.closed:
-            raise NetLogoError("this NetLogo session is closed")
+            reason = getattr(self._handle, "close_reason", None)
+            raise NetLogoError("this NetLogo session is closed" + (f": {reason}" if reason else ""))
+
+    def _ref(self, agent: Agent) -> str:
+        """NetLogo code designating ``agent``, which must belong to this session."""
+        _same_session([agent], self)
+        return agent.to_netlogo()
+
+    def _who(self, turtle: Union[Turtle, int]) -> int:
+        """Who number of a turtle given as a handle of this session or as a number."""
+        if isinstance(turtle, Turtle):
+            _same_session([turtle], self)
+            return turtle.who
+        return int(turtle)
+
+    def _set(self, agents: Agents, empty: str = "no-turtles") -> str:
+        """NetLogo agentset for NetLogo code, an agent or a list of agents of this session."""
+        return _agentset(agents, empty, self)
+
+    def _procedures_identity(self) -> int:
+        """A number that changes when NetLogo recompiles the model."""
+        try:
+            return int(self._system.identityHashCode(self._ws.procedures()))
+        except Exception:
+            return 0
 
     # ─── running code ─────────────────────────────────────────────────────────
     def command(self, *commands: str) -> None:
@@ -328,6 +443,7 @@ class NetLogo(WidgetsMixin):
         """
         source = "\n".join(commands)
         if not source.strip():
+            self._check_open()
             return
         with self._lock:
             if self.gui:
@@ -420,10 +536,18 @@ class NetLogo(WidgetsMixin):
         import jpype
         converted = []
         for value in values.values():
+            if type(value).__module__ == "numpy" and getattr(value, "ndim", 1) == 0:
+                value = value.item()               # numpy scalar -> Python number or boolean
             if isinstance(value, bool):
                 converted.append(jpype.JObject(value, "java.lang.Boolean"))
             elif isinstance(value, (int, float)) and not isinstance(value, Code):
-                converted.append(jpype.JObject(float(value), "java.lang.Double"))
+                try:
+                    number = float(value)
+                except OverflowError:
+                    return False
+                if not math.isfinite(number):
+                    return False                   # NaN, infinity: NetLogo code refuses them
+                converted.append(jpype.JObject(number, "java.lang.Double"))
             elif isinstance(value, str) and not isinstance(value, Code):
                 converted.append(jpype.JObject(value, "java.lang.String"))
             else:
@@ -482,9 +606,15 @@ class NetLogo(WidgetsMixin):
         else:
             reporters = list(reporter)
             if not reporters:
+                self._check_open()
                 return []
-            source = "(list " + " ".join(f"({r})" for r in reporters) + ")"
-        return from_java(self.report_java(source), self)
+            source = "(list " + " ".join(f"({_c(r)})" for r in reporters) + ")"
+        with self._lock:                           # converted before a background run changes the agents
+            result = self.report_java(source)
+            try:
+                return from_java(result, self)
+            except self._java_exception as exc:
+                raise _error_from_java(exc, source) from None
 
     def report_java(self, reporter: str) -> Any:
         """Like :meth:`report` but return the raw Java object."""
@@ -496,11 +626,21 @@ class NetLogo(WidgetsMixin):
                 raise _error_from_java(exc, reporter) from None
             self._raise_logo_exception(reporter)
             if isinstance(result, self._throwable):  # error returned as the value
-                raise NetLogoRuntimeError(_java_message(result), reporter)
+                message = _java_message(result)
+                raise NetLogoRuntimeError(message, reporter, _java_context(result, message))
             return result
 
     def _compile(self, source: str, reporter: bool) -> Any:
         self._check_open()
+        if self.gui:
+            # The user may have edited the code or the interface in the window:
+            # NetLogo then recompiled the model, and what was compiled before
+            # would run the old procedures and read the wrong variables.
+            identity = self._procedures_identity()
+            if identity != self._procedures_id:
+                self._procedures_id = identity
+                self._cache.clear()
+                self._singulars.clear()
         key = (reporter, source)
         procedure = self._cache.get(key)
         if procedure is not None:
@@ -539,7 +679,8 @@ class NetLogo(WidgetsMixin):
                 self._ws.clearLastLogoException()
             except AttributeError:
                 pass
-            raise NetLogoRuntimeError(_java_message(exc), source)
+            message = _java_message(exc)
+            raise NetLogoRuntimeError(message, source, _java_context(exc, message))
 
     # ─── simulation control ───────────────────────────────────────────────────
     def setup(self, command: str = "setup") -> None:
@@ -552,7 +693,7 @@ class NetLogo(WidgetsMixin):
         if times == 1:
             self.command(command)
         elif times > 1:
-            self.command(f"repeat {times} [ {command} ]")
+            self.command(f"repeat {times} [ {_c(command)} ]")
 
     def run_until(self, condition: str, command: str = "go",
                   max_steps: Optional[int] = None) -> int:
@@ -597,7 +738,9 @@ class NetLogo(WidgetsMixin):
         include_initial : bool, default True
             Also record the reporters before the first step (step 0).
         until : str, optional
-            NetLogo reporter; the run stops early once it is true.
+            NetLogo reporter tested before each step, as in :meth:`run_until`;
+            the run stops once it is true, and the reporters are recorded at
+            that step.
         as_dataframe : bool, default False
             Return a pandas DataFrame instead of a dict.
 
@@ -605,6 +748,11 @@ class NetLogo(WidgetsMixin):
         -------
         dict or pandas.DataFrame
             ``{"step": [...], column: [...]}``, one list per reporter.
+
+        Raises
+        ------
+        ValueError
+            Two reporters have the same name, or one is named ``step``.
 
         Examples
         --------
@@ -614,7 +762,14 @@ class NetLogo(WidgetsMixin):
         [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
         """
         names, exprs = _named_reporters(reporters)
+        if "step" in names:
+            raise ValueError('a reporter cannot be named "step": that column holds the step numbers')
+        if len(set(names)) != len(names):
+            raise ValueError("two reporters have the same name: name the columns with a dict")
+        if as_dataframe:
+            _require_pandas()                      # before the run, not after it
         every = max(1, int(every))
+        steps = int(steps)
         columns: Dict[str, list] = {"step": []}
         columns.update((name, []) for name in names)
 
@@ -625,14 +780,23 @@ class NetLogo(WidgetsMixin):
 
         if include_initial:
             record(0)
-        done = 0
-        while done < steps:
-            chunk = min(every, steps - done)
-            self.go(chunk, command)
-            done += chunk
-            record(done)
-            if until and self.report(until):
-                break
+        done = last = 0
+        stopped = False
+        while done < steps and not stopped:
+            target = min(done + every, steps)
+            if not until:
+                self.go(target - done, command)
+                done = target
+            else:
+                while done < target:
+                    if self.report(until):
+                        stopped = True
+                        break
+                    self.command(command)
+                    done += 1
+            if done != last:
+                record(done)
+                last = done
         return _table(columns, as_dataframe)
 
     def schedule_reporters(self, reporters: Sequence[str], start_at_tick: int = 0,
@@ -645,9 +809,12 @@ class NetLogo(WidgetsMixin):
         reporters : sequence of str
             NetLogo reporters recorded together.
         start_at_tick : int, default 0
-            First tick at which the reporters are recorded.
+            The reporters are recorded after a step, when the tick counter is
+            ``start_at_tick``, ``start_at_tick + interval_ticks``, and so on.
+            The state before the first step is not recorded: with the default
+            values the first row is tick 1.
         interval_ticks : int, default 1
-            Record every ``interval_ticks`` ticks.
+            Record every ``interval_ticks`` ticks (``> 0``).
         stop_at_tick : int
             Tick at which the run ends (required, ``>= 0``).  The run also
             ends when ``go`` no longer advances the ticks.
@@ -661,15 +828,17 @@ class NetLogo(WidgetsMixin):
         """
         if stop_at_tick is None or stop_at_tick < 0:
             raise ValueError("stop_at_tick must be >= 0")
+        if interval_ticks <= 0:
+            raise ValueError("interval_ticks must be > 0")
         results: List[List[Any]] = []
         ticks = self.ticks
         while ticks < stop_at_tick:
             self.command(go_command)
             previous, ticks = ticks, self.ticks
+            if ticks == previous:                  # go stopped: nothing new to record
+                break
             if ticks >= start_at_tick and (ticks - start_at_tick) % interval_ticks == 0:
                 results.append(self.report(list(reporters)))
-            if ticks == previous:
-                break
         return results
 
     # --- background runs: start / pause / resume / stop ---------------------------
@@ -700,11 +869,16 @@ class NetLogo(WidgetsMixin):
         --------
         wait : wait for the run to end by itself.
         stop : end the run and get the number of steps.
+        halt : end the run without waiting for the step in progress.
         """
         with self._lock:
             self._check_open()
             if self.running:
                 raise NetLogoError("a background run is already active: stop() it first")
+            previous = self._runner
+            if previous is not None and previous.error is not None:
+                warnings.warn("the previous background run ended with an error that stop() or wait() "
+                              f"never reported: {previous.error}", RuntimeWarning, stacklevel=2)
             self._runner = _BackgroundRun(self, command, max(0.0, float(interval)), max_steps, until)
             self._runner.start()
 
@@ -722,8 +896,17 @@ class NetLogo(WidgetsMixin):
         if runner is not None:
             runner.resumed.set()
 
-    def stop(self) -> int:
+    def stop(self, timeout: Optional[float] = None) -> int:
         """End the background run and return how many steps it made.
+
+        The step in progress finishes first.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Seconds to wait for the step in progress.  When it has not
+            finished by then, it is interrupted as by :meth:`halt`.  By
+            default ``stop`` waits as long as the step needs.
 
         Returns
         -------
@@ -741,10 +924,56 @@ class NetLogo(WidgetsMixin):
         runner.stop_requested.set()
         runner.resumed.set()
         if runner is not threading.current_thread():
-            runner.join()
+            runner.join(timeout)
+            if runner.is_alive() and not self._halt_runner(runner):
+                self._runner = runner
+                raise NetLogoError("NetLogo did not stop: the running code does not respond to halt")
         if runner.error is not None:
             raise runner.error
         return runner.steps
+
+    def halt(self) -> int:
+        """Interrupt the NetLogo code that is running, like *Halt* in NetLogo's Tools menu.
+
+        Unlike :meth:`stop`, ``halt`` does not wait for the step in progress
+        of a background run: use it for a step that takes too long or never
+        ends.  Called from another Python thread, it also interrupts a
+        :meth:`command` that does not return.
+
+        Returns
+        -------
+        int
+            Steps completed by the background run (0 when no run was active).
+
+        Raises
+        ------
+        NetLogoError
+            NetLogo did not stop within ten seconds.
+        """
+        runner, self._runner = self._runner, None
+        if runner is None or runner is threading.current_thread():
+            self._check_open()
+            self._ws.halt()
+            return 0
+        runner.stop_requested.set()
+        runner.resumed.set()
+        if not self._halt_runner(runner):
+            self._runner = runner
+            raise NetLogoError("NetLogo did not stop: the running code does not respond to halt")
+        return runner.steps
+
+    def _halt_runner(self, runner: _BackgroundRun, patience: float = 10.0) -> bool:
+        """Interrupt the step in progress of ``runner``; True once its thread has ended."""
+        runner.halted = True
+        waited = 0.0
+        while runner.is_alive() and waited < patience:
+            try:
+                self._ws.halt()
+            except Exception:                      # the workspace is being disposed
+                pass
+            runner.join(0.2)
+            waited += 0.2
+        return not runner.is_alive()
 
     def wait(self, timeout: Optional[float] = None) -> bool:
         """Wait for the background run to end by itself; False if ``timeout`` expired first."""
@@ -778,10 +1007,16 @@ class NetLogo(WidgetsMixin):
         return runner.steps if runner is not None else 0
 
     def _stop_quietly(self) -> None:
-        try:
-            self.stop()
-        except Exception:                          # closing must not fail on a run's error
-            pass
+        """End the background run for good: never raises, never waits for an endless step."""
+        runner, self._runner = self._runner, None
+        if runner is None:
+            return
+        runner.stop_requested.set()
+        runner.resumed.set()
+        if runner is not threading.current_thread():
+            runner.join(2)
+            if runner.is_alive() and self._ws is not None:
+                self._halt_runner(runner, patience=5.0)
 
     # ─── ticks ────────────────────────────────────────────────────────────────
     @property
@@ -817,6 +1052,7 @@ class NetLogo(WidgetsMixin):
     def global_names(self) -> List[str]:
         """Names of the model's globals, interface widgets included (lower case)."""
         import jpype
+        self._check_open()
         names = self._ws.world().program().globals()
         return [str(names.apply(jpype.JInt(i))).lower() for i in range(names.size())]
 
@@ -872,18 +1108,29 @@ class NetLogo(WidgetsMixin):
     @property
     def wrap_x(self) -> bool:
         """True when the world wraps horizontally."""
+        self._check_open()
         return bool(self._ws.world().wrappingAllowedInX())
 
     @property
     def wrap_y(self) -> bool:
         """True when the world wraps vertically."""
+        self._check_open()
         return bool(self._ws.world().wrappingAllowedInY())
 
     def set_topology(self, wrap_x: bool, wrap_y: bool) -> None:
         """Choose which edges wrap (torus, box, horizontal or vertical cylinder)."""
+        def change() -> None:
+            try:
+                self._ws.changeTopology(bool(wrap_x), bool(wrap_y))    # the world and the view
+            except AttributeError:
+                self._ws.world().changeTopology(bool(wrap_x), bool(wrap_y))
+
         with self._lock:
             self._check_open()
-            self._ws.world().changeTopology(bool(wrap_x), bool(wrap_y))
+            if self.gui:
+                _java.run_on_edt(change)
+            else:
+                change()
 
     def random_seed(self, seed: int) -> None:
         """Seed NetLogo's random generator, for reproducible runs."""
@@ -931,18 +1178,35 @@ class NetLogo(WidgetsMixin):
         return Turtle(self, who)
 
     def patch(self, x: float, y: float) -> Optional[Patch]:
-        """The patch containing point (x, y); None outside a non-wrapping world."""
-        if float(x).is_integer() and float(y).is_integer():
-            return Patch(self, int(x), int(y))
-        return self.report(f"patch {to_netlogo(x)} {to_netlogo(y)}")
+        """The patch containing point (x, y); None outside a non-wrapping world.
+
+        In a world that wraps, coordinates outside it designate the patch
+        they wrap to, as NetLogo's ``patch`` does.
+        """
+        x, y = float(x), float(y)
+        if not (math.isfinite(x) and math.isfinite(y)):
+            raise ValueError("NetLogo numbers must be finite")
+        with self._lock:
+            self._check_open()
+            try:
+                return from_java(self._ws.world().getPatchAt(x, y), self)
+            except self._java_exception:           # outside a world that does not wrap
+                return None
 
     def link(self, end1: Union[Turtle, int], end2: Union[Turtle, int],
              breed: Optional[str] = None) -> Optional[Link]:
-        """The link from ``end1`` to ``end2`` (None when there is none)."""
-        a = end1.who if isinstance(end1, Turtle) else int(end1)
-        b = end2.who if isinstance(end2, Turtle) else int(end2)
-        singular = self._link_singular(breed or "links")
-        return self.report(f"{singular} {a} {b}")
+        """The link from ``end1`` to ``end2`` (None when there is none).
+
+        Without ``breed`` the link may be of any breed: a directed link from
+        ``end1`` to ``end2``, or an undirected link between the two.  With
+        ``breed`` (plural name, ``"links"`` for links without a breed) only
+        that breed is looked at.
+        """
+        a, b = self._who(end1), self._who(end2)
+        if breed is None:
+            return self.report(f"ifelse-value (turtle {a} = nobody or turtle {b} = nobody) [ nobody ] "
+                               f"[ [out-link-to turtle {b}] of turtle {a} ]")
+        return self.report(f"{self._link_singular(breed)} {a} {b}")
 
     def turtles(self, breed: str = "turtles", where: Optional[str] = None) -> List[Turtle]:
         """Turtles of a breed, optionally filtered by a NetLogo condition, sorted by who."""
@@ -962,11 +1226,36 @@ class NetLogo(WidgetsMixin):
 
     def ask(self, agents: Agents, *commands: str) -> None:
         """``ask agents [ commands ]`` -- agents is NetLogo code, an agent or a list of agents."""
-        self.command(f"ask {_agentset(agents)} [\n" + "\n".join(commands) + "\n]")
+        agents = _agents(agents)
+        if agents == []:
+            return                                 # an empty list: nobody to ask
+        self.command(f"ask {self._set(agents)} [\n" + "\n".join(commands) + "\n]")
 
     def of(self, agents: Agents, reporter: str) -> List[Any]:
-        """``[reporter] of agents``, in the same (sorted) order as :meth:`turtles`."""
-        return self.report(f"map [ __a -> [{reporter}] of __a ] sort {_agentset(agents)}")
+        """``[reporter] of agents``, as a list.
+
+        For NetLogo code (``"turtles"``, ``"sheep with [energy > 5]"``) the
+        values come in the sorted order of :meth:`turtles`.  For a Python list
+        of agents they come in the order of the list, one value per agent,
+        so that ``zip(agents, nl.of(agents, ...))`` pairs them; the value is
+        None for an agent that died.
+        """
+        agents = _agents(agents)
+        body = f"[{_c(reporter)}] of"
+        if isinstance(agents, str):
+            return self.report(f"map [ __a -> {body} __a ] sort ({_c(agents)})")
+        if not agents:
+            return []
+        _same_session(agents, self)
+        kinds = {agent.kind for agent in agents}
+        if kinds == {"turtle"}:
+            return self.report(f"map [ __w -> ifelse-value (turtle __w = nobody) [ nobody ] "
+                               f"[ {body} turtle __w ] ] {_who_list(agents)}")
+        if kinds == {"patch"}:
+            return self.report(f"map [ __p -> ifelse-value (patch first __p last __p = nobody) [ nobody ] "
+                               f"[ {body} patch first __p last __p ] ] {_xy_list(agents)}")
+        refs = " ".join(agent.to_netlogo() for agent in agents)
+        return self.report(f"map [ __a -> ifelse-value (__a = nobody) [ nobody ] [ {body} __a ] ] (list {refs})")
 
     def create_turtles(self, count: int = 1, breed: Optional[str] = None, *,
                        ordered: bool = False, variables: Optional[Dict[str, Any]] = None,
@@ -1002,11 +1291,32 @@ class NetLogo(WidgetsMixin):
             return []
         primitive = "create-ordered-" if ordered else "create-"
         values = assignments({**(variables or {}), **kwargs})
-        self.command(f"{primitive}{breed or 'turtles'} {count} [ {values} ]")
-        return self._newest_turtles(count)
+        return self._create(f"{primitive}{breed or 'turtles'} {count} [ {values} ]")
 
-    def _newest_turtles(self, count: int) -> List[Turtle]:
-        return self.report(f"sort max-n-of {int(count)} turtles [who]")
+    def _create(self, code: str) -> List[Turtle]:
+        """Run ``code``, which creates turtles, and return exactly the turtles it created.
+
+        NetLogo numbers the turtles in the order of their creation: the who
+        counter is read before and after the command, under the session lock,
+        so the turtles a background run creates are never returned.  When the
+        command fails, the turtles it had created are removed before the
+        error is raised.
+        """
+        with self._lock:
+            self._check_open()
+            world = self._ws.world()
+            first, alive = int(world.nextTurtleIndex()), int(world.turtles().count())
+            try:
+                self.command(code)
+            except NetLogoError:
+                if int(world.nextTurtleIndex()) > first:
+                    self.command(f"ask turtles with [ who >= {first} ] [ die ]")
+                raise
+            last = int(world.nextTurtleIndex())
+            if int(world.turtles().count()) - alive == last - first:
+                return [Turtle(self, who) for who in range(first, last)]
+            # Some of the new turtles died in their own initialisation.
+            return [Turtle(self, who) for who in range(first, last) if world.getTurtle(who) is not None]
 
     def create_link(self, end1: Union[Turtle, int], end2: Union[Turtle, int], *,
                     directed: Optional[bool] = None, breed: Optional[str] = None,
@@ -1030,17 +1340,31 @@ class NetLogo(WidgetsMixin):
         Returns
         -------
         Link
-            The new link.
+            The new link.  When the two turtles already have such a link,
+            NetLogo creates nothing and does not set the variables again:
+            that link is returned as it is.
         """
         a = end1 if isinstance(end1, Turtle) else Turtle(self, end1)
         b = end2 if isinstance(end2, Turtle) else Turtle(self, end2)
+        _same_session([a, b], self)
         breed = breed or "links"
         if directed is None:
             directed = self._link_breed_directed(breed) if breed != "links" else False
         values = assignments({**(variables or {}), **kwargs})
         primitive = f"create-{breed}-{'to' if directed else 'with'}"
-        self.command(f"ask {a.to_netlogo()} [ {primitive} (turtle-set {b.to_netlogo()}) [ {values} ] ]")
-        link = self.link(a, b, breed) or self.link(b, a, breed)
+        with self._lock:                           # creation and lookup are one operation
+            self._check_open()
+            links = self._ws.world().links()
+            before = int(links.count())
+            try:
+                self.command(f"ask {a.to_netlogo()} [ {primitive} (turtle-set {b.to_netlogo()}) [ {values} ] ]")
+            except NetLogoError:
+                if int(links.count()) > before:    # created, then its initialisation failed
+                    created = self.link(a, b, breed) or self.link(b, a, breed)
+                    if created is not None:
+                        created.die()
+                raise
+            link = self.link(a, b, breed) or self.link(b, a, breed)
         if link is None:
             raise NetLogoRuntimeError(f"the {breed} link between {a} and {b} was not created")
         return link
@@ -1067,6 +1391,7 @@ class NetLogo(WidgetsMixin):
 
     def breeds(self) -> Dict[str, List[str]]:
         """Breeds of the model: ``{"turtles": [...], "links": [...]}`` (plural names)."""
+        self._check_open()
         world = self._ws.world()
         return {"turtles": sorted(str(name).lower() for name in world.breeds().keySet()),
                 "links": sorted(str(name).lower() for name in world.linkBreeds().keySet())}
@@ -1142,17 +1467,38 @@ class NetLogo(WidgetsMixin):
 
     def set_patch_grid(self, variable: str, grid: Any) -> None:
         """Set a patch variable from rows laid out like :meth:`patch_grid`."""
-        rows = [list(row) for row in (grid.tolist() if hasattr(grid, "tolist") else grid)]
         height, width = self.world_height, self.world_width
+        shape = ValueError(f"grid must have {height} rows of {width} values")
+        try:
+            rows = [list(row) for row in (grid.tolist() if hasattr(grid, "tolist") else grid)]
+        except TypeError:                          # e.g. a one-dimensional array
+            raise shape from None
         if len(rows) != height or any(len(row) != width for row in rows):
-            raise ValueError(f"grid must have {height} rows of {width} values")
-        self.command(
-            f"(foreach (range max-pycor (min-pycor - 1) -1) {to_netlogo(rows)} [ [__y __row] -> "
-            f"(foreach (range min-pxcor (max-pxcor + 1)) __row [ [__x __v] -> "
-            f"ask patch __x __y [ set {variable_name(variable)} __v ] ]) ])")
+            raise shape
+        name = variable_name(variable)
+        try:
+            self.command(
+                f"(foreach (range max-pycor (min-pycor - 1) -1) {to_netlogo(rows)} [ [__y __row] -> "
+                f"(foreach (range min-pxcor (max-pxcor + 1)) __row [ [__x __v] -> "
+                f"ask patch __x __y [ set {name} __v ] ]) ])")
+        except NetLogoError as exc:
+            if "too large" not in exc.message:
+                raise
+            # A grid of agents is one NetLogo expression per cell, too many for a
+            # single command (nothing ran: it did not compile).  Set it by pieces.
+            with self._lock:
+                top, left = self.max_pycor, self.min_pxcor
+                for index, row in enumerate(rows):
+                    for start in range(0, width, 200):
+                        cells = row[start:start + 200]
+                        self.command(
+                            f"(foreach (range {left + start} {left + start + len(cells)}) {to_netlogo(cells)} "
+                            f"[ [__x __v] -> ask patch __x {top - index} [ set {name} __v ] ])")
 
     def diffuse(self, variable: str, rate: float, neighbors: int = 8) -> None:
         """Share ``rate`` of each patch's ``variable`` with its 8 (or 4) neighbors."""
+        if neighbors not in (4, 8):
+            raise ValueError("neighbors must be 4 or 8")
         primitive = "diffuse4" if neighbors == 4 else "diffuse"
         self.command(f"{primitive} {variable_name(variable)} {to_netlogo(rate)}")
 
@@ -1355,111 +1701,172 @@ class NetLogo(WidgetsMixin):
 
     # ─── layouts ──────────────────────────────────────────────────────────────
     def layout_circle(self, agents: Agents = "turtles", radius: Optional[float] = None) -> None:
-        """Place the agents on a circle around the world center."""
+        """Place the agents on a circle around the world center.
+
+        A Python list of turtles, or NetLogo code that reports a list, is laid
+        out in the order of the list; an agentset is laid out by who number.
+        """
         size = to_netlogo(radius) if radius is not None else \
             "(0.4 * min (list world-width world-height))"
-        self.command(f"layout-circle sort {_agentset(agents)} {size}")
+        agents = _agents(agents)
+        if agents == []:
+            return
+        if isinstance(agents, str):
+            self.command(f"let __agents ({_c(agents)})\n"
+                         f"layout-circle (ifelse-value (is-list? __agents) [ __agents ] [ sort __agents ]) {size}")
+            return
+        _same_session(agents, self)
+        if {agent.kind for agent in agents} != {"turtle"}:
+            raise TypeError("layout_circle places turtles")
+        self.command("layout-circle filter [ __t -> __t != nobody ] "
+                     f"map [ __w -> turtle __w ] {_who_list(agents)} {size}")
 
     def layout_spring(self, turtles: Agents = "turtles", links: Agents = "links",
                       spring_constant: float = 0.2, spring_length: float = 5,
                       repulsion_constant: float = 1, iterations: int = 1) -> None:
         """Force-directed layout of a network."""
-        self.command(f"repeat {int(iterations)} [ layout-spring {_agentset(turtles)} "
-                     f"{_agentset(links)} {to_netlogo(spring_constant)} "
+        self.command(f"repeat {int(iterations)} [ layout-spring {self._set(turtles)} "
+                     f"{self._set(links, 'no-links')} {to_netlogo(spring_constant)} "
                      f"{to_netlogo(spring_length)} {to_netlogo(repulsion_constant)} ]")
 
     def layout_radial(self, turtles: Agents, links: Agents, root: Turtle) -> None:
         """Tree layout around ``root``."""
-        self.command(f"layout-radial {_agentset(turtles)} {_agentset(links)} {root.to_netlogo()}")
+        self.command(f"layout-radial {self._set(turtles)} {self._set(links, 'no-links')} {self._ref(root)}")
 
-    def layout_tutte(self, fixed_turtles: Agents, links: Agents, radius: float) -> None:
+    def layout_tutte(self, turtles: Optional[Agents] = None, links: Optional[Agents] = None,
+                     radius: Optional[float] = None, *, fixed_turtles: Optional[Agents] = None) -> None:
         """Tutte layout of a network (NetLogo ``layout-tutte``).
-
-        The three arguments are passed to ``layout-tutte`` in this order.
 
         Parameters
         ----------
-        fixed_turtles : str, agent or list of agents
-            First argument of ``layout-tutte`` (a turtle set).
+        turtles : str, agent or list of agents
+            The turtles the layout moves: each one goes to the centre of the
+            turtles it is linked to.  The other turtles of the network are
+            spread on the circle and stay there.
         links : str, agent or list of agents
             The links of the network.
         radius : float
-            Radius of the circle used by the layout.
+            Radius of the circle.
+        fixed_turtles : str, agent or list of agents, optional
+            Former name of ``turtles``, kept for the scripts that use it.  The
+            name was misleading: these are the turtles that move.
         """
-        self.command(f"layout-tutte {_agentset(fixed_turtles)} {_agentset(links)} {to_netlogo(radius)}")
+        if turtles is None:
+            turtles = fixed_turtles
+        if turtles is None or links is None or radius is None:
+            raise TypeError("layout_tutte() needs turtles, links and radius")
+        self.command(f"layout-tutte {self._set(turtles)} {self._set(links, 'no-links')} {to_netlogo(radius)}")
 
     # ─── observer ─────────────────────────────────────────────────────────────
     def watch(self, agent: Agent) -> None:
         """Put the spotlight on an agent in the view (NetLogo ``watch``)."""
-        self.command(f"watch {agent.to_netlogo()}")
+        self.command(f"watch {self._ref(agent)}")
 
     def follow(self, turtle: Turtle) -> None:
         """Make the observer follow a turtle (NetLogo ``follow``)."""
-        self.command(f"follow {turtle.to_netlogo()}")
+        self.command(f"follow {self._ref(turtle)}")
 
     def ride(self, turtle: Turtle) -> None:
         """Make the observer ride a turtle (NetLogo ``ride``)."""
-        self.command(f"ride {turtle.to_netlogo()}")
+        self.command(f"ride {self._ref(turtle)}")
 
     def inspect(self, agent: Agent) -> None:
         """Open an agent monitor (in the NetLogo window)."""
-        self.command(f"inspect {agent.to_netlogo()}")
+        self.command(f"inspect {self._ref(agent)}")
 
     def stop_inspecting(self, agent: Optional[Agent] = None) -> None:
         """Close the monitor of ``agent``, or the monitors of dead agents."""
-        self.command(f"stop-inspecting {agent.to_netlogo()}" if agent is not None
+        self.command(f"stop-inspecting {self._ref(agent)}" if agent is not None
                      else "stop-inspecting-dead-agents")
 
     # ─── choosing agents ──────────────────────────────────────────────────────
+    # An empty Python list has no kind (turtles, patches or links), so the code
+    # about its agents might not compile: the answer is given without NetLogo.
     def any(self, agents: Agents = "turtles", where: Optional[str] = None) -> bool:
         """``any? agents with [where]``."""
-        return bool(self.report(f"any? {_with(_agentset(agents), where)}"))
+        agents = _agents(agents)
+        if agents == []:
+            return False
+        return bool(self.report(f"any? {_with(self._set(agents), where)}"))
 
     def all(self, agents: Agents, condition: str) -> bool:
         """``all? agents [condition]``."""
-        return bool(self.report(f"all? {_agentset(agents)} [ {condition} ]"))
+        agents = _agents(agents)
+        if agents == []:
+            return True
+        return bool(self.report(f"all? {self._set(agents)} [ {_c(condition)} ]"))
 
     def one_of(self, agents: Agents = "turtles", where: Optional[str] = None) -> Optional[Agent]:
         """A random agent (None if there is none)."""
-        return self.report(f"one-of {_with(_agentset(agents), where)}")
+        agents = _agents(agents)
+        if agents == []:
+            return None
+        return self.report(f"one-of {_with(self._set(agents), where)}")
 
     def n_of(self, n: int, agents: Agents = "turtles", where: Optional[str] = None) -> List[Agent]:
         """``n`` random agents, or all of them if there are fewer (``up-to-n-of``)."""
-        chosen = _with(_agentset(agents), where)
-        return self.report(f"[self] of (ifelse-value (count {chosen} > {int(n)}) "
-                           f"[ n-of {int(n)} {chosen} ] [ {chosen} ])")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        return self.report(f"[self] of up-to-n-of {int(n)} {_with(self._set(agents), where)}")
 
     def max_one_of(self, agents: Agents, reporter: str) -> Optional[Agent]:
         """The agent with the highest value of ``reporter``."""
-        return self.report(f"max-one-of {_agentset(agents)} [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return None
+        return self.report(f"max-one-of {self._set(agents)} [ {_c(reporter)} ]")
 
     def min_one_of(self, agents: Agents, reporter: str) -> Optional[Agent]:
         """The agent with the lowest value of ``reporter``."""
-        return self.report(f"min-one-of {_agentset(agents)} [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return None
+        return self.report(f"min-one-of {self._set(agents)} [ {_c(reporter)} ]")
 
     def max_n_of(self, n: int, agents: Agents, reporter: str) -> List[Agent]:
         """The ``n`` agents with the highest values, best first."""
-        return self.report(f"sort-on [ (- ({reporter})) ] max-n-of {int(n)} {_agentset(agents)} [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        reporter = _c(reporter)
+        return self.report(f"sort-on [ (- ({reporter})) ] max-n-of {int(n)} {self._set(agents)} [ {reporter} ]")
 
     def min_n_of(self, n: int, agents: Agents, reporter: str) -> List[Agent]:
         """The ``n`` agents with the lowest values, lowest first."""
-        return self.report(f"sort-on [ {reporter} ] min-n-of {int(n)} {_agentset(agents)} [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        reporter = _c(reporter)
+        return self.report(f"sort-on [ {reporter} ] min-n-of {int(n)} {self._set(agents)} [ {reporter} ]")
 
     def with_max(self, agents: Agents, reporter: str) -> List[Agent]:
         """Every agent holding the maximum of ``reporter``."""
-        return self.report(f"sort {_agentset(agents)} with-max [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        return self.report(f"sort {self._set(agents)} with-max [ {_c(reporter)} ]")
 
     def with_min(self, agents: Agents, reporter: str) -> List[Agent]:
         """Every agent holding the minimum of ``reporter``."""
-        return self.report(f"sort {_agentset(agents)} with-min [ {reporter} ]")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        return self.report(f"sort {self._set(agents)} with-min [ {_c(reporter)} ]")
 
     def sort_on(self, agents: Agents, reporter: str) -> List[Agent]:
         """Agents sorted by the value of ``reporter``."""
-        return self.report(f"sort-on [ {reporter} ] {_agentset(agents)}")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        return self.report(f"sort-on [ {_c(reporter)} ] {self._set(agents)}")
 
     def turtles_on(self, agents: Agents, breed: str = "turtles") -> List[Turtle]:
         """Turtles standing on the given patches (or on the patches of the given turtles)."""
-        return self.report(f"sort {breed}-on {_agentset(agents)}")
+        agents = _agents(agents)
+        if agents == []:
+            return []
+        return self.report(f"sort {breed}-on {self._set(agents)}")
 
     def set_default_shape(self, breed: str, shape: str) -> None:
         """Set the shape given to the new agents of ``breed`` (plural name; NetLogo ``set-default-shape``)."""
@@ -1564,9 +1971,21 @@ class NetLogo(WidgetsMixin):
         self.command("beep")
 
     # ─── files read and written by NetLogo ────────────────────────────────────
+    def _file_path(self, path: PathLike) -> str:
+        """Absolute path for ``file_open``, ``file_delete`` and ``file_exists``.
+
+        A relative path starts from the folder given to
+        :meth:`set_current_directory`, as in NetLogo; from Python's working
+        folder when that method was not called.
+        """
+        path = os.fspath(path)
+        if self._directory is not None and not os.path.isabs(path):
+            path = os.path.join(self._directory, path)
+        return os.path.abspath(path)
+
     def file_open(self, path: PathLike) -> None:
         """Open a file for the ``file_*`` methods, reading or writing (NetLogo ``file-open``)."""
-        self.command(f"file-open {to_netlogo(_path(path))}")
+        self.command(f"file-open {to_netlogo(self._file_path(path))}")
 
     def file_close(self) -> None:
         """Close the current file (NetLogo ``file-close``)."""
@@ -1582,11 +2001,11 @@ class NetLogo(WidgetsMixin):
 
     def file_delete(self, path: PathLike) -> None:
         """Delete a file (NetLogo ``file-delete``)."""
-        self.command(f"file-delete {to_netlogo(_path(path))}")
+        self.command(f"file-delete {to_netlogo(self._file_path(path))}")
 
     def file_exists(self, path: PathLike) -> bool:
         """True when the file exists (NetLogo ``file-exists?``)."""
-        return bool(self.report(f"file-exists? {to_netlogo(_path(path))}"))
+        return bool(self.report(f"file-exists? {to_netlogo(self._file_path(path))}"))
 
     def file_print(self, value: Any) -> None:
         """Write a value and a new line to the open file (NetLogo ``file-print``)."""
@@ -1622,8 +2041,15 @@ class NetLogo(WidgetsMixin):
         return bool(self.report("file-at-end?"))
 
     def set_current_directory(self, path: PathLike) -> None:
-        """Set the folder used by NetLogo's file primitives (NetLogo ``set-current-directory``)."""
-        self.command(f"set-current-directory {to_netlogo(_path(path))}")
+        """Set the folder of relative file names (NetLogo ``set-current-directory``).
+
+        It is used by NetLogo's ``file-open``, ``file-delete`` and
+        ``file-exists?``, and by :meth:`file_open`, :meth:`file_delete` and
+        :meth:`file_exists`.
+        """
+        path = _path(path)
+        self.command(f"set-current-directory {to_netlogo(path)}")
+        self._directory = path
 
     # ─── mouse and dialogs (NetLogo window) ───────────────────────────────────
     @property
@@ -1692,10 +2118,20 @@ class Globals:
         self._nl = nl
 
     def __getitem__(self, name: str) -> Any:
-        return self._nl.get_global(name)
+        try:
+            return self._nl.get_global(name)
+        except NetLogoCompileError:
+            if name not in self:                   # like a dict: an unknown name is a KeyError
+                raise KeyError(name) from None
+            raise
 
     def __setitem__(self, name: str, value: Any) -> None:
-        self._nl.set_global(name, value)
+        try:
+            self._nl.set_global(name, value)
+        except NetLogoCompileError:
+            if name not in self:
+                raise KeyError(name) from None
+            raise
 
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and name.lower() in self._nl.global_names()

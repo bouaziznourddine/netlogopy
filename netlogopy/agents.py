@@ -345,8 +345,7 @@ class Turtle(Agent):
             primitive, values = "hatch", f"set breed turtles {values}"
         else:
             primitive = f"hatch-{breed}" if breed else "hatch"
-        self.ask(f"{primitive} {count} [ {values} ]")
-        return self.nl._newest_turtles(count)
+        return self.nl._create(f"ask {self.to_netlogo()} [ {primitive} {count} [ {values} ] ]")
 
     # links
     def create_link_with(self, other: "Turtle", breed: Optional[str] = None, **variables: Any) -> "Link":
@@ -549,8 +548,7 @@ class Patch(Agent):
             return []
         primitive = f"sprout-{breed}" if breed and breed != "turtles" else "sprout"
         values = assignments({**(variables or {}), **kwargs})
-        self.ask(f"{primitive} {count} [ {values} ]")
-        return self.nl._newest_turtles(count)
+        return self.nl._create(f"ask {self.to_netlogo()} [ {primitive} {count} [ {values} ] ]")
 
 
 # ─── Link ──────────────────────────────────────────────────────────────────────

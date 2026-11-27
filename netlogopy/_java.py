@@ -349,6 +349,23 @@ def ensure_context_class_loader() -> None:
         thread.setContextClassLoader(loader)
 
 
+def detach_thread() -> None:
+    """Detach the calling Python thread from the JVM; call it when the thread ends.
+
+    A Python thread that called NetLogo is attached to the JVM, which keeps a
+    Java thread for it even after the Python thread is gone.  Never call it on
+    the main thread.
+    """
+    try:
+        import jpype
+        if jpype.isJVMStarted():
+            thread = jpype.JClass("java.lang.Thread")
+            if thread.isAttached():
+                thread.detach()
+    except Exception:                      # best effort: the thread is ending anyway
+        pass
+
+
 def jvm_info() -> Dict[str, Any]:
     """Details of the running JVM: NetLogo ``home`` and ``version``, ``jvm`` library."""
     return dict(_jvm)
