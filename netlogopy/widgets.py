@@ -13,18 +13,27 @@ import re
 from typing import Any, List, Mapping, Optional, Sequence, Tuple, Union
 
 from . import _java
-from .convert import to_netlogo
-from .errors import NetLogoError
+from .convert import _c, to_netlogo
+from .errors import NetLogoCompileError, NetLogoError
 
 __all__ = ["WidgetsMixin"]
 
 _NAME = re.compile(r"^[^\s\[\]\(\)\"{};,]+$")
 _AGENTS = {"observer": "OBSERVER", "turtles": "TURTLE", "turtle": "TURTLE", "patches": "PATCH",
            "patch": "PATCH", "links": "LINK", "link": "LINK"}
+_ASK = {"OBSERVER": None, "TURTLE": "turtles", "PATCH": "patches", "LINK": "links"}
 _INPUT_KINDS = {"number": "Number", "string": "String", "color": "Color",
                 "reporter": "String (reporter)", "commands": "String (commands)"}
 _PEN_MODES = {"line": 0, "bar": 1, "point": 2}
 _GAP = 8
+
+
+def _option(options: Mapping[str, Any], value: Any, what: str) -> Any:
+    """The entry of ``options`` chosen by ``value``, or a ValueError that lists the choices."""
+    try:
+        return options[str(value).lower()]
+    except KeyError:
+        raise ValueError(f"{what} must be one of {', '.join(sorted(options))}, not {value!r}") from None
 
 
 def _escape(text: Any) -> str:
@@ -101,6 +110,12 @@ class WidgetsMixin:
                 raise ValueError(f"{variable!r} is not a valid NetLogo name")
             if variable.lower() in self.global_names():       # type: ignore[attr-defined]
                 raise ValueError(f"the model already has a global or a widget named {variable!r}")
+            try:
+                # NetLogo itself says whether the name is free: a breed, a procedure, a
+                # primitive or a number would leave a model that no longer compiles.
+                self._compile(f"let {variable} 0", reporter=False)         # type: ignore[attr-defined]
+            except NetLogoCompileError as exc:
+                raise ValueError(f"{variable!r} cannot name a widget: {exc.message}") from None
         self._stop_quietly()                                  # type: ignore[attr-defined]
 
         def load() -> None:
@@ -124,6 +139,9 @@ class WidgetsMixin:
 
         _java.run_on_edt(load)
         self._cache.clear()                                   # type: ignore[attr-defined]
+        if variable is not None and variable.lower() not in self.global_names():   # type: ignore[attr-defined]
+            raise NetLogoCompileError(f"the model does not compile any more with the widget {variable!r}: "
+                                      "see the Code tab of the NetLogo window")
 
     # ─── the "Add" menu ───────────────────────────────────────────────────────
     def add_button(self, label: str, commands: Optional[str] = None, *, forever: bool = False,
@@ -151,19 +169,39 @@ class WidgetsMixin:
             under the widgets already added there).
         width, height : int
             Size in pixels.
+
+        Raises
+        ------
+        NetLogoCompileError
+            The commands do not compile: the button is not added.
+        ValueError
+            ``agents`` is not one of the four kinds.
         """
+        code = commands if commands is not None else label
+        kind = _option(_AGENTS, agents, "agents")
+        asked = _ASK[kind]
+        # A button whose code does not compile would be added and do nothing, without a word.
+        self._interface_panel()
+        self._compile(f"ask {asked} [ {_c(code)} ]" if asked else code, reporter=False)    # type: ignore[attr-defined]
         self._add_widget(
-            ["BUTTON", _label(label), _escape(commands if commands is not None else label),
-             "T" if forever else "NIL", "1", "T", _AGENTS[agents.lower()], "NIL",
+            ["BUTTON", _label(label), _escape(code),
+             "T" if forever else "NIL", "1", "T", kind, "NIL",
              key.upper() if key else "NIL", "NIL", "NIL", "0" if disable_until_ticks else "1"],
             x, y, width, height)
 
-    def add_slider(self, name: str, minimum: Any = 0, maximum: Any = 100, value: float = 50,
+    def add_slider(self, name: str, minimum: Any = 0, maximum: Any = 100, value: Optional[float] = None,
                    step: Any = 1, *, units: Optional[str] = None, vertical: bool = False,
                    x: Optional[int] = None, y: Optional[int] = None,
                    width: Optional[int] = None, height: Optional[int] = None) -> None:
-        """Add a slider; ``name`` becomes a global.  Bounds and step may be NetLogo reporters."""
+        """Add a slider; ``name`` becomes a global.  Bounds and step may be NetLogo reporters.
+
+        Without ``value`` the slider starts at 50, or at its minimum when 50
+        is outside its bounds.
+        """
         bound = lambda v: v if isinstance(v, str) else _number(v)          # noqa: E731
+        if value is None:
+            numbers = not isinstance(minimum, str) and not isinstance(maximum, str)
+            value = minimum if numbers and not float(minimum) <= 50 <= float(maximum) else 50
         default_size = (33, 150) if vertical else (240, 33)
         self._add_widget(
             ["SLIDER", _label(name), _label(name), bound(minimum), bound(maximum),
@@ -212,14 +250,17 @@ class WidgetsMixin:
         """
         if kind is None:
             kind = "number" if isinstance(value, (int, float)) and not isinstance(value, bool) else "string"
-        text = _number(value) if kind in ("number", "color") else _escape(value)
+        kind_name = _option(_INPUT_KINDS, kind, "kind")
+        text = _number(value) if kind.lower() in ("number", "color") else _escape(value)
         self._add_widget(["INPUTBOX", _label(name), text, "1", "1" if multiline else "0",
-                          _INPUT_KINDS[kind.lower()]], x, y, width, height, variable=name)
+                          kind_name], x, y, width, height, variable=name)
 
     def add_monitor(self, reporter: str, label: Optional[str] = None, *, decimals: int = 17,
                     font_size: int = 11, x: Optional[int] = None, y: Optional[int] = None,
                     width: int = 115, height: int = 45) -> None:
-        """Add a monitor showing the value of ``reporter``."""
+        """Add a monitor showing the value of ``reporter`` (NetLogoCompileError if it does not compile)."""
+        self._interface_panel()
+        self._compile(reporter, reporter=True)                # type: ignore[attr-defined]
         self._add_widget(["MONITOR", _label(label) if label else "NIL", _escape(reporter),
                           str(int(decimals)), "1", str(int(font_size))], x, y, width, height)
 
@@ -268,6 +309,7 @@ class WidgetsMixin:
             pens = ["default"]
         if not isinstance(pens, Mapping):
             pens = {pen: "" for pen in pens}
+        pen_mode = _option(_PEN_MODES, mode, "mode")
         palette = [0, 15, 105, 55, 25, 115, 85, 35, 125, 45]
         lines = ["PLOT", _label(name), _label(x_label), _label(y_label),
                  _number(x_range[0]), _number(x_range[1]), _number(y_range[0]), _number(y_range[1]),
@@ -275,7 +317,7 @@ class WidgetsMixin:
                  f"{_quoted(setup)} {_quoted(update)}", "PENS"]
         for index, (pen, code) in enumerate(pens.items()):
             color = (colors or {}).get(pen, palette[index % len(palette)])
-            lines.append(f"{_quoted(pen)} 1.0 {_PEN_MODES[mode.lower()]} {_color_rgb(color)} true "
+            lines.append(f"{_quoted(pen)} 1.0 {pen_mode} {_color_rgb(color)} true "
                          f'"" {_quoted(code)}')
         self._add_widget(lines, x, y, width, height)
 

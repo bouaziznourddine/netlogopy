@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from netlogopy import NetLogo, NetLogoError
+from netlogopy import NetLogo, NetLogoCompileError, NetLogoError
 from netlogopy.widgets import _color_rgb, _escape, _label
 
 pytestmark = pytest.mark.netlogo
@@ -47,6 +47,17 @@ def test_widgets_need_the_window(session):
         session.add_button("go")
     with pytest.raises(NetLogoError, match="gui=True"):
         session.press_button("go")
+    with pytest.raises(NetLogoError, match="gui=True"):
+        session.add_monitor("count turtles")
+
+
+def test_wrong_options_name_the_choices(session):
+    with pytest.raises(ValueError, match="agents must be one of .*turtles"):
+        session.add_button("go", agents="turtle-set")
+    with pytest.raises(ValueError, match="kind must be one of .*number"):
+        session.add_input("x", 1, kind="text")
+    with pytest.raises(ValueError, match="mode must be one of bar, line, point"):
+        session.add_plot("p", mode="histogram")
 
 
 @pytest.mark.skipif(os.environ.get("NETLOGOPY_GUI_TESTS") != "1",
@@ -90,3 +101,18 @@ def test_every_widget_in_the_window(tmp_path):
             nl.add_output()
         with pytest.raises(NetLogoError, match="no button"):
             nl.press_button("missing")
+
+        # what would leave a model that no longer compiles is refused before it is added
+        for name in ("pyturtles", "setup", "count", "12"):         # a breed, a procedure, a primitive, a number
+            with pytest.raises(ValueError, match="cannot name a widget"):
+                nl.add_slider(name)
+        with pytest.raises(NetLogoCompileError):
+            nl.add_button("broken", "no-such-command 3")
+        with pytest.raises(NetLogoCompileError):
+            nl.add_button("broken", "fd 1")                        # turtle code in an observer button
+        with pytest.raises(NetLogoCompileError):
+            nl.add_monitor("no-such-reporter")
+        nl.add_slider("small", 0, 10)                              # 50 is outside its bounds
+        nl.add_slider("wide", 0, 200)
+        assert (nl.globals["small"], nl.globals["wide"], nl.globals["my-rate"]) == (0, 50, 60)
+        assert nl.count("turtles") == 5                            # the model still compiles and runs

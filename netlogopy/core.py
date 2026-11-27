@@ -210,9 +210,9 @@ class _BackgroundRun(threading.Thread):
                         continue
                     if self.until and self.nl.report(self.until):
                         break
-                    self.nl.command(self.command)
-                    if self.halted:                # an interrupted step is not a step made
-                        break
+                    stopped = self.nl._step(self.command)
+                    if self.halted or stopped:     # interrupted, or the model's `go` called `stop`:
+                        break                      # not a step made
                     self.steps += 1
                 if self.interval:
                     self.stop_requested.wait(self.interval)
@@ -259,7 +259,7 @@ class NetLogo(WidgetsMixin):
     >>> with NetLogo() as nl:                 # bundled model, headless
     ...     nl.command("create-turtles 10")
     ...     nl.report("count turtles")
-    10
+    10.0
     """
 
     def __init__(self, model: Optional[PathLike] = None, *, gui: bool = False,
@@ -352,6 +352,7 @@ class NetLogo(WidgetsMixin):
             self._alias_clash.clear()
             self._owner = None
             self._directory = None
+            self._widget_column = None             # where add_button() and the others put widgets
             self._procedures_id = self._procedures_identity()
             self.model_path = path
         return self
@@ -472,6 +473,32 @@ class NetLogo(WidgetsMixin):
             self._ws.runCompiledCommands(self._job_owner(), procedure)
         except self._java_exception as exc:
             raise _error_from_java(exc, source) from None
+
+    # BehaviorSpace ends a run when the `go` procedure calls `stop`.  It knows it
+    # from this primitive, put after the step: NetLogo then reports that the
+    # commands stopped.  A background run does the same.
+    _STEP_END = "\n__experimentstepend"
+
+    def _step(self, source: str) -> bool:
+        """Run ``source`` as one step of a run; True when it ended with ``stop``.
+
+        In the NetLogo window the answer is always False: commands run there
+        inside ``carefully`` (see above), which hides the ``stop`` of the model.
+        """
+        with self._lock:
+            if self.gui:
+                self._gui_command(source)
+                return False
+            try:
+                procedure = self._compile(source + self._STEP_END, reporter=False)
+            except NetLogoCompileError as exc:     # the error is about the user's code
+                raise NetLogoCompileError(exc.message, source) from None
+            try:
+                stopped = bool(self._ws.runCompiledCommands(self._job_owner(), procedure))
+            except self._java_exception as exc:
+                raise _error_from_java(exc, source) from None
+            self._raise_logo_exception(source)
+            return stopped
 
     # ─── agent variables through NetLogo's Java API ──────────────────────────
     # Reading or writing one variable of one agent does not need NetLogo code:
@@ -618,9 +645,9 @@ class NetLogo(WidgetsMixin):
         Examples
         --------
         >>> nl.report("count turtles")
-        10
+        10.0
         >>> nl.report(["count sheep", "count wolves"])
-        [100, 50]
+        [100.0, 50.0]
         """
         if isinstance(reporter, str):
             source = reporter
@@ -869,7 +896,11 @@ class NetLogo(WidgetsMixin):
         """Run ``command`` again and again in the background, like a forever button.
 
         Python keeps the hand: read reporters, move agents, :meth:`pause`,
-        :meth:`resume` and :meth:`stop` while the model runs.
+        :meth:`resume` and :meth:`stop` while the model runs.  The run ends by
+        itself after ``max_steps``, when ``until`` becomes true, or when the
+        model's ``go`` procedure calls ``stop`` (that last call is not counted
+        as a step).  In the NetLogo window a ``stop`` of the model is not
+        seen: give ``until`` or ``max_steps`` there.
 
         Parameters
         ----------

@@ -6,6 +6,7 @@ import os
 import shutil
 import threading
 import time
+import warnings
 
 import pytest
 from conftest import FIRE_MODEL, WOLF_MODEL
@@ -552,3 +553,52 @@ def test_the_bundled_model_is_the_one_that_was_shipped(nl):
     # A model file that NetLogo saved over loses or gains globals: see the autosave tests.
     assert sorted(nl.global_names()) == ["scenario", "show-label", "speed", "user-text"]
     assert nl.breeds() == {"turtles": ["pyturtles"], "links": ["streets"]}
+
+
+# ─── the Java VM ─────────────────────────────────────────────────────────────────
+
+def test_options_asked_of_a_java_vm_that_already_runs(nl):
+    with pytest.warns(RuntimeWarning, match="-Xmx64m ignored"):
+        NetLogo(FIRE_MODEL, jvm_args=["-Xmx64m"]).close()
+    with pytest.warns(RuntimeWarning, match="java_home=.* ignored"):
+        NetLogo(FIRE_MODEL, java_home=os.path.dirname(FIRE_MODEL)).close()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")             # a plain second session asks for nothing
+        NetLogo(FIRE_MODEL).close()
+
+
+def test_netlogo_folders_are_given_to_the_java_vm_as_they_are(nl):
+    import jpype
+    folder = jpype.JClass("java.lang.System").getProperty("netlogo.extensions.dir")
+    assert folder is not None and os.path.isdir(str(folder))
+
+
+# ─── a model that stops ──────────────────────────────────────────────────────────
+
+def test_a_background_run_ends_when_the_model_stops():
+    with NetLogo(FIRE_MODEL) as fire:              # Fire's go calls stop once the fire is out
+        fire.random_seed(3)
+        fire.setup()
+        fire.start("go")
+        assert fire.wait(60), "the run must end by itself, like a forever button"
+        steps = fire.stop()
+        assert not fire.any("turtles") and steps == fire.ticks > 0     # the stopping call is not a step
+        fire.start("go")                           # the fire is out: it stops at once
+        assert fire.wait(10) and fire.stop() == 0
+        fire.start("tick", max_steps=3)            # a command that never stops is not affected
+        assert fire.wait(10) and fire.stop() == 3
+        with pytest.raises(NetLogoRuntimeError, match="NOBODY") as info:
+            fire.start("ask turtle 99999 [ fd 1 ]")
+            fire.wait(10)
+        assert info.value.source == "ask turtle 99999 [ fd 1 ]"       # the user's code, as written
+
+
+def test_a_step_reports_that_the_model_stopped(nl, monkeypatch):
+    nl.command("reset-ticks")
+    assert nl._step("tick") is False and nl._step("if ticks > 0 [ stop ]") is True
+    with pytest.raises(NetLogoRuntimeError):
+        nl._step("ask turtle 999 [ fd 1 ]")
+    monkeypatch.setattr(nl, "gui", True)           # the window wrapper, on a headless workspace:
+    assert nl._step("tick") is False and nl.ticks == 2             # it runs the step, and hides a stop
+    with pytest.raises(NetLogoRuntimeError, match="NOBODY"):
+        nl._step("ask turtle 999 [ fd 1 ]")

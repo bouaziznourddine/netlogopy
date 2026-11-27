@@ -15,6 +15,7 @@ import re
 import sys
 import threading
 import time
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from .errors import NetLogoError, NetLogoNotFoundError
@@ -28,7 +29,10 @@ __all__ = [
     "jvm_info",
 ]
 
-_JAR_RE = re.compile(r"^netlogo-(\d+(?:\.\d+)*)[\w.-]*\.jar$", re.IGNORECASE)
+#: netlogo-<version><suffix>.jar; the suffix is empty for a release ("-beta1", "-RC1" otherwise).
+_JAR_RE = re.compile(r"^netlogo-(\d+(?:\.\d+)*)([\w.-]*)\.jar$", re.IGNORECASE)
+#: Where the jar is, inside an installation (Windows, Linux and macOS layouts of NetLogo 6.x and 7.x).
+_JAR_FOLDERS = ("app", os.path.join("lib", "app"), "Java", "lib", "")
 #: JPype >= 1.5 refuses to start Java 8 (bundled with NetLogo <= 6.2).
 _MIN_JAVA = 9
 
@@ -55,16 +59,22 @@ def _netlogo_jar(directory: str) -> Optional[str]:
     return None
 
 
+def _standard_jar_dir(home: str) -> Optional[str]:
+    for sub in _JAR_FOLDERS:
+        folder = os.path.join(home, sub) if sub else home
+        if _netlogo_jar(folder):
+            return folder
+    return None
+
+
 def find_jar_dir(netlogo_home: str) -> Optional[str]:
     """Return the folder holding ``netlogo-<version>.jar`` and its libraries."""
     home = os.path.abspath(netlogo_home)
     if not os.path.isdir(home):
         return None
-    # Windows / Linux / macOS layouts of NetLogo 6.x and 7.x
-    for sub in ("app", os.path.join("lib", "app"), "Java", "lib", ""):
-        folder = os.path.join(home, sub) if sub else home
-        if _netlogo_jar(folder):
-            return folder
+    folder = _standard_jar_dir(home)
+    if folder:
+        return folder
     # Unusual layouts (e.g. macOS application bundles): shallow search.
     for root, dirs, files in os.walk(home):
         if root[len(home):].count(os.sep) >= 4:
@@ -74,12 +84,39 @@ def find_jar_dir(netlogo_home: str) -> Optional[str]:
     return None
 
 
-def netlogo_version(netlogo_home: str) -> Optional[str]:
-    """Return the NetLogo version of an installation (e.g. ``"6.2.2"``)."""
+def _install_root(jar_dir: str) -> str:
+    """The NetLogo installation folder around the jar folder ``jar_dir``.
+
+    NetLogo's own Java runtime and its extensions are looked for from there,
+    so a folder above the installation or inside it would miss them.
+    """
+    parts = os.path.abspath(jar_dir).split(os.sep)
+    lowered = [part.lower() for part in parts]
+    for tail in (("lib", "app"), ("app",), ("java",), ("lib",)):
+        if tuple(lowered[-len(tail):]) == tail:
+            parts = parts[:-len(tail)]
+            break
+    if len(parts) >= 2 and parts[-1].lower() == "contents" and parts[-2].lower().endswith(".app"):
+        parts = parts[:-2]                 # macOS: <home>/NetLogo.app/Contents/Java
+    return os.sep.join(parts) or os.sep
+
+
+def _jar_match(netlogo_home: str) -> Optional["re.Match[str]"]:
     jar_dir = find_jar_dir(netlogo_home)
     jar = _netlogo_jar(jar_dir) if jar_dir else None
-    match = _JAR_RE.match(os.path.basename(jar)) if jar else None
+    return _JAR_RE.match(os.path.basename(jar)) if jar else None
+
+
+def netlogo_version(netlogo_home: str) -> Optional[str]:
+    """Return the NetLogo version of an installation (e.g. ``"6.2.2"``)."""
+    match = _jar_match(netlogo_home)
     return match.group(1) if match else None
+
+
+def _is_release(netlogo_home: str) -> bool:
+    """False for a pre-release (netlogo-7.0.0-beta1.jar), which ranks below the release."""
+    match = _jar_match(netlogo_home)
+    return bool(match) and not match.group(2)
 
 
 def _candidate_homes() -> List[str]:
@@ -99,10 +136,18 @@ def _candidate_homes() -> List[str]:
     homes, seen = [], set()
     for pattern in patterns:
         for path in glob.glob(pattern):
-            key = os.path.normcase(os.path.abspath(path))
-            if key not in seen and os.path.isdir(path):
-                seen.add(key)
-                homes.append(os.path.abspath(path))
+            if not os.path.isdir(path):
+                continue
+            found = [path]
+            if not _standard_jar_dir(path):
+                # A folder that holds installations (~/netlogo/NetLogo-6.4.0-64): each is a candidate.
+                inside = [sub for sub in glob.glob(os.path.join(path, "*")) if _standard_jar_dir(sub)]
+                found = inside or found
+            for home in found:
+                key = os.path.normcase(os.path.abspath(home))
+                if key not in seen:
+                    seen.add(key)
+                    homes.append(os.path.abspath(home))
     return homes
 
 
@@ -116,19 +161,23 @@ def find_netlogo_home(netlogo_home: Optional[str] = None) -> str:
                           (os.environ.get("NETLOGO_HOME"), "NETLOGO_HOME")):
         if given:
             given = os.fspath(given)
-            if find_jar_dir(given):
-                return os.path.abspath(given)
+            jar_dir = find_jar_dir(given)
+            if jar_dir:
+                return _install_root(jar_dir)      # the installation, even from a folder above or inside it
             raise NetLogoNotFoundError(
                 f"{origin}={given!r} is not a NetLogo installation "
                 "(no netlogo-<version>.jar found in it).")
-    found = [(_version_tuple(netlogo_version(home)), home)
-             for home in _candidate_homes() if find_jar_dir(home)]
+    found = []
+    for home in _candidate_homes():
+        jar_dir = find_jar_dir(home)
+        if jar_dir:
+            found.append((_version_tuple(netlogo_version(home)), _is_release(home), _install_root(jar_dir)))
     if not found:
         raise NetLogoNotFoundError(
             "NetLogo was not found. Install it from "
             "https://ccl.northwestern.edu/netlogo/download.shtml, or pass "
             "netlogo_home='...' (or set the NETLOGO_HOME environment variable).")
-    return max(found)[1]
+    return max(found)[2]                           # the newest; a release before its pre-releases
 
 
 # ─── Java runtime ──────────────────────────────────────────────────────────────
@@ -316,12 +365,30 @@ def ensure_jvm(netlogo_home: Optional[str] = None, java_home: Optional[str] = No
                 raise NetLogoError(
                     f"This Python process already runs NetLogo from {running!r}. Only one "
                     "NetLogo installation can be used per process: restart Python to switch.")
+            # A process has one Java VM: what a later session asks of it cannot be given.
+            ignored = [arg for arg in jvm_args if arg not in _jvm.get("args", jvm_args)]
+            if java_home and _jvm.get("jvm"):
+                asked = _jvm_library(os.fspath(java_home))
+                if asked is None or not _same_path(asked, _jvm["jvm"]):
+                    ignored.append(f"java_home={os.fspath(java_home)!r}")
+            if ignored:
+                warnings.warn("The Java VM of this Python process is already running: "
+                              f"{', '.join(ignored)} ignored. Give these options to the first NetLogo "
+                              "session of the process.", RuntimeWarning, stacklevel=3)
             return running
 
         home = find_netlogo_home(netlogo_home)
         jar_dir = find_jar_dir(home)
         version = _version_tuple(netlogo_version(home))
         jvm_path = find_jvm(home, java_home)
+        if platform.system() == "Windows":
+            try:
+                jvm_path.encode("mbcs")
+            except UnicodeEncodeError:
+                raise NetLogoError(
+                    f"The Java runtime {jvm_path!r} is in a folder whose name Windows' code page cannot "
+                    "write: the Java VM cannot start from there. Install NetLogo in a folder with a plain "
+                    "name, or give another runtime with java_home=... or JAVA_HOME.") from None
         jars = sorted(glob.glob(os.path.join(jar_dir, "*.jar")),
                       key=lambda path: (not _JAR_RE.match(os.path.basename(path)), path))
         options = _jvm_options(home, jar_dir, version, headless) + list(jvm_args)
@@ -329,7 +396,15 @@ def ensure_jvm(netlogo_home: Optional[str] = None, java_home: Optional[str] = No
             jpype.startJVM(jvm_path, *options, classpath=jars, convertStrings=False)
         except Exception as exc:
             raise NetLogoError(f"Could not start the Java VM {jvm_path}: {exc}") from exc
-        _jvm.update(home=home, version=".".join(map(str, version)), jvm=jvm_path, headless=headless)
+        # The Java VM reads its options in the code page of the system, which
+        # garbles a folder name with accents: NetLogo's folders are given again here.
+        system = jpype.JClass("java.lang.System")
+        for option in options:
+            if option.startswith("-Dnetlogo.") and "=" in option:
+                key, value = option[2:].split("=", 1)
+                system.setProperty(key, value)
+        _jvm.update(home=home, version=".".join(map(str, version)), jvm=jvm_path, headless=headless,
+                    args=tuple(jvm_args))
         # Registered after JPype's own exit hook, so it runs first (atexit is LIFO):
         # NetLogo's threads must be stopped before JPype shuts the JVM down.
         atexit.register(_shutdown)

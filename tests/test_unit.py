@@ -225,3 +225,38 @@ def test_find_jvm_explicit_java_home(tmp_path, monkeypatch):
     _fake_java(tmp_path / "jre8", 8)
     with pytest.raises(NetLogoNotFoundError):
         _java.find_jvm(str(home), java_home=str(tmp_path / "jre8"))
+
+
+def test_find_netlogo_home_gives_the_installation_folder(tmp_path, monkeypatch):
+    monkeypatch.delenv("NETLOGO_HOME", raising=False)
+    home = _fake_netlogo(tmp_path / "netlogo", "6.4.0", "lib/app")
+    assert _java.find_netlogo_home(str(home)) == str(home)
+    assert _java.find_netlogo_home(str(tmp_path / "netlogo")) == str(home)      # a folder above it
+    assert _java.find_netlogo_home(str(home / "lib" / "app")) == str(home)      # a folder inside it
+    mac = _fake_netlogo(tmp_path / "mac", "6.3.0", "NetLogo.app/Contents/Java")
+    assert _java.find_netlogo_home(str(mac)) == str(mac)
+    windows = _fake_netlogo(tmp_path / "windows", "7.0.0", "app")
+    assert _java._install_root(str(windows / "app")) == str(windows)
+
+
+def test_candidate_homes_look_inside_a_folder_of_installations(tmp_path, monkeypatch):
+    _fake_netlogo(tmp_path / "netlogo", "6.4.0", "lib/app")       # the layout of the CI recipe
+    _fake_netlogo(tmp_path / "netlogo", "7.0.0", "lib/app")
+    monkeypatch.setattr(_java.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(_java.os.path, "expanduser", lambda path: path.replace("~", str(tmp_path)))
+    here = [home for home in _java._candidate_homes() if home.startswith(str(tmp_path))]
+    assert sorted(os.path.basename(home) for home in here) == ["NetLogo 6.4.0", "NetLogo 7.0.0"]
+
+
+def test_a_release_is_preferred_to_its_pre_releases(tmp_path, monkeypatch):
+    monkeypatch.delenv("NETLOGO_HOME", raising=False)
+    older = _fake_netlogo(tmp_path, "6.4.0")
+    release = _fake_netlogo(tmp_path, "7.0.0")
+    beta = tmp_path / "NetLogo 7.0.0-beta1"
+    (beta / "app").mkdir(parents=True)
+    (beta / "app" / "netlogo-7.0.0-beta1.jar").write_bytes(b"")
+    assert _java.netlogo_version(str(beta)) == "7.0.0"
+    assert _java._is_release(str(release)) and not _java._is_release(str(beta))
+    for order in ([older, beta, release], [release, beta, older]):
+        monkeypatch.setattr(_java, "_candidate_homes", lambda order=order: [str(home) for home in order])
+        assert _java.find_netlogo_home() == str(release)
