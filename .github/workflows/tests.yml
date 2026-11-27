@@ -3,6 +3,7 @@ name: tests
 on:
   push:
   pull_request:
+  workflow_call:        # publish.yml runs these tests before it uploads a release
 
 jobs:
   unit:
@@ -12,20 +13,28 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        install: ['-e ".[test]"']
         include:
-          # setup-python no longer provides 3.9 on the newest Ubuntu image
+          # setup-python no longer provides 3.8 and 3.9 on the newest Ubuntu image
           - os: ubuntu-22.04
             python-version: "3.9"
+            install: '-e ".[test]"'
+          # Python 3.8 installs the wheel from PyPI; building the package needs a
+          # setuptools that asks for Python 3.9, so the tests run on the sources.
+          - os: ubuntu-22.04
+            python-version: "3.8"
+            install: '"JPype1>=1.5" "pytest>=6"'
           - os: windows-latest
             python-version: "3.12"
+            install: '-e ".[test]"'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: python -m pip install -e ".[test]"
+        run: python -m pip install ${{ matrix.install }}
       - name: Unit tests (NetLogo is not installed, so its tests are skipped)
         run: python -m pytest -q
 
@@ -53,12 +62,16 @@ jobs:
           mkdir -p ~/netlogo
           curl -fsSL "https://downloads.netlogo.org/${{ matrix.netlogo }}/NetLogo-${{ matrix.netlogo }}-64.tgz" | tar xz -C ~/netlogo
       - name: Install
-        run: python -m pip install -e ".[test,data]" pytest-cov
+        run: python -m pip install -e ".[test,data]" pytest-cov pillow
       - name: Tests with NetLogo, examples included, with coverage
         run: |
           export NETLOGO_HOME="$(ls -d ~/netlogo/*/ | head -n 1)"
           python -m netlogopy
           python -m pytest -q --cov=netlogopy --cov-report=term
+      - name: The NetLogo window, on a virtual screen
+        run: |
+          export NETLOGO_HOME="$(ls -d ~/netlogo/*/ | head -n 1)"
+          NETLOGOPY_GUI_TESTS=1 xvfb-run -a python -m pytest -q tests/test_window.py tests/test_widgets.py
 
   lint:
     runs-on: ubuntu-latest
@@ -81,3 +94,8 @@ jobs:
       - run: python tools/readme_links.py absolute
       - run: python -m build
       - run: python -m twine check dist/*
+      - name: The wheel installs with its model files
+        run: |
+          python -m venv /tmp/check
+          /tmp/check/bin/pip install dist/*.whl
+          cd /tmp && /tmp/check/bin/python "$GITHUB_WORKSPACE/tools/check_wheel.py"

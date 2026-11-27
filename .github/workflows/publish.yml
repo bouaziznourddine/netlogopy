@@ -16,6 +16,9 @@ permissions:
   contents: read
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -36,18 +39,18 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           echo "package $version, tag $GITHUB_REF_NAME"
           test "$version" = "$tag"
-      - name: The wheel installs and imports
+      - name: The wheel installs with its model files
         run: |
           python -m venv /tmp/check
           /tmp/check/bin/pip install dist/*.whl
-          cd /tmp && /tmp/check/bin/python -c "import netlogopy; print(netlogopy.__version__)"
+          cd /tmp && /tmp/check/bin/python "$GITHUB_WORKSPACE/tools/check_wheel.py"
       - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
 
   pypi:
-    needs: build
+    needs: [build, tests]
     # Manual runs only build; uploading needs a published release.
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
