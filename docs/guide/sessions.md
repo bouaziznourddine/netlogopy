@@ -26,6 +26,11 @@ with NetLogo("model.nlogo") as nl:               # closed at the end of the bloc
 - `NETLOGOPY_HEADLESS=1` turns every window off.
 - NetLogo 7 asks to resize the widgets of models saved by NetLogo 6 when it
   opens them in its window; netlogopy answers "Resize and adjust positions".
+- At its first window on a computer, NetLogo 7 asks whether it may send
+  anonymous usage statistics ("Data Consent"). The answer is yours: the script
+  waits for it, and says so. Where nobody can click (a server, continuous
+  integration), the script `tools/netlogo_no_statistics.py` of the repository
+  records "No" beforehand.
 
 ## Commands and reporters
 

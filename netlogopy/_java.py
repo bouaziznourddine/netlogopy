@@ -800,6 +800,21 @@ def _take_over_closing(app: Any) -> None:
         menu.getPopupMenu().addContainerListener(on_added)
 
 
+def _consent_pending() -> bool:
+    """True when NetLogo 7 will ask its data-consent question at its next window.
+
+    At its first launch on a machine, NetLogo 7 asks in a dialog whether it may
+    send anonymous usage statistics, and waits for the answer.  The question
+    is the user's to answer: netlogopy only says that NetLogo is waiting.
+    """
+    try:
+        import jpype
+        preferences = getattr(jpype.JClass("org.nlogo.core.NetLogoPreferences$"), "MODULE$")
+        return str(preferences.get("sendAnalytics", "$$$")) == "$$$"
+    except Exception:                      # NetLogo 6: no such question
+        return False
+
+
 def launch_gui() -> Any:
     """Open the NetLogo window (once per process) and return the ``App``."""
     import jpype
@@ -823,6 +838,9 @@ def launch_gui() -> Any:
             raise NetLogoError("No display: the NetLogo window (gui=True) cannot be shown here. Use "
                                "gui=False, or set NETLOGOPY_HEADLESS=1 to run a window script without it.")
         app_class = jpype.JClass("org.nlogo.app.App")
+        if _consent_pending():
+            warnings.warn("NetLogo asks a question in its window (\"Data Consent\", once per computer): "
+                          "the script goes on when it is answered.", UserWarning, stacklevel=3)
         try:
             # NetLogo 7 compiles on the event thread, which needs NetLogo's class
             # loader: AWT may have been started by a thread that had none.

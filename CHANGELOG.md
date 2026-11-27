@@ -85,6 +85,9 @@ worked with 1.0.0 gives the same results, except where 1.0.0 was wrong.
   its extensions.
 - `jvm_args` and `java_home` given when the Java VM already runs produce a
   warning instead of being ignored silently.
+- When NetLogo 7 shows its "Data Consent" question (at its first window on a
+  computer), a warning says that the script waits for the answer;
+  `tools/netlogo_no_statistics.py` records "No" where nobody can click.
 - A widget named like a breed, a procedure or a primitive is refused (the
   model no longer compiled); so is a button or a monitor whose code does not
   compile.
