@@ -5,16 +5,23 @@ link end points).  Every attribute read or write goes to NetLogo, so handles
 never hold stale values; using the handle of a dead agent raises
 :class:`~netlogopy.NetLogoRuntimeError`.
 
+A handle therefore means "the agent with this number".  NetLogo gives the who
+numbers again after ``clear-all`` or ``clear-turtles`` (a ``setup`` usually
+does it): a handle kept from before then designates the new turtle that got
+its number.
+
 Variables are read and written with ``agent.get(name)`` / ``agent.set(name, value)``,
 ``agent[name]`` / ``agent[name] = value``, or the properties of the built-in
 variables (``turtle.color = 15``).  Python-friendly aliases are accepted for the
 built-in names that are not valid Python identifiers: ``label_color``,
-``plabel_color``, ``pen_mode``, ``pen_size``, ``tie_mode`` and ``hidden`` (``hidden?``).
+``plabel_color``, ``pen_mode``, ``pen_size``, ``tie_mode`` and ``hidden`` (``hidden?``);
+a model variable spelled like an alias is that variable, not the alias.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
+import copy
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
 
-from .convert import to_netlogo
+from .convert import Code, _c, to_netlogo
 
 if TYPE_CHECKING:                          # pragma: no cover
     from .core import NetLogo
@@ -36,10 +43,12 @@ def variable_name(name: str) -> str:
     return _ALIASES.get(name, name)
 
 
-def assignments(variables: Dict[str, Any]) -> str:
-    """NetLogo ``set`` commands for a dict of variables."""
-    return " ".join(f"set {variable_name(name)} {to_netlogo(value)}"
-                    for name, value in variables.items())
+def assignments(variables: Dict[str, Any], name: Callable[[str], str] = variable_name) -> str:
+    """NetLogo ``set`` commands for a dict of variables (``name`` gives their NetLogo names)."""
+    return " ".join(f"set {name(key)} {to_netlogo(value)}" for key, value in variables.items())
+
+
+_MISSING: Any = object()                   # "no value given", where None is a value (nobody)
 
 
 def _variable(name: str, doc: str, readonly: bool = False) -> property:
@@ -85,22 +94,49 @@ class Agent:
     def __hash__(self) -> int:
         return hash((id(self.nl),) + self._key())
 
+    def __deepcopy__(self, memo: Dict[int, Any]) -> "Agent":
+        # A handle is an identity: the copy designates the same agent of the same
+        # session (which cannot be copied); only Python attributes are copied.
+        clone = copy.copy(self)
+        for name, value in getattr(clone, "__dict__", {}).items():
+            clone.__dict__[name] = copy.deepcopy(value, memo)
+        return clone
+
     # -- variables -----------------------------------------------------------------
     def get(self, variable: str) -> Any:
-        """Value of one of the agent's variables (built-in or ``-own``)."""
+        """Value of one of the agent's variables (built-in or ``-own``).
+
+        ``breed`` gives the name of the breed, in plural form.
+        """
+        if variable == "breed" and self.kind != "patch":
+            return self.of("(word breed)")
         value = self.nl._fast_get(self, variable)
         if value is not self.nl._NO_VALUE:
             return value
-        return self.nl.report(f"[{variable_name(variable)}] of {self.to_netlogo()}")
+        return self.nl.report(f"[{self.nl._variable_name(variable)}] of {self.to_netlogo()}")
 
-    def set(self, variable: Optional[str] = None, value: Any = None, **variables: Any) -> "Agent":
-        """Set variables: ``agent.set("energy", 5)`` or ``agent.set(color=15, size=2)``."""
+    def set(self, variable: Any = _MISSING, value: Any = _MISSING, /, **variables: Any) -> "Agent":
+        """Set variables: ``agent.set("energy", 5)`` or ``agent.set(color=15, size=2)``.
+
+        Every keyword is the name of a variable, ``value`` and ``variable``
+        included.  ``breed`` takes the plural name of a breed.
+        """
+        if (variable is _MISSING and isinstance(variables.get("variable"), str) and "value" in variables
+                and not self.nl._declares("variable")):
+            # set(variable="color", value=15): the keyword form of the two arguments
+            variable, value = variables.pop("variable"), variables.pop("value")
         values: Dict[str, Any] = {}
-        if variable is not None:
+        if variable is not _MISSING:
+            if value is _MISSING:
+                raise TypeError("set() needs a value: agent.set(name, value) or agent.set(name=value)")
             values[variable] = value
         values.update(variables)
+        breed = values.get("breed")
+        if isinstance(breed, str) and not isinstance(breed, Code) and self.kind == "turtle":
+            del values["breed"]
+            self.nl.command(f"ask {self.to_netlogo()} [ set breed {breed} ]")
         if values and not self.nl._fast_set(self, values):
-            self.nl.command(f"ask {self.to_netlogo()} [ {assignments(values)} ]")
+            self.nl.command(f"ask {self.to_netlogo()} [ {assignments(values, self.nl._variable_name)} ]")
         return self
 
     def __getitem__(self, variable: str) -> Any:
@@ -111,9 +147,9 @@ class Agent:
 
     def get_many(self, variables: Sequence[str]) -> Dict[str, Any]:
         """Several variables at once, in one NetLogo call."""
-        names = list(variables)
+        names = [variables] if isinstance(variables, str) else list(variables)
         values = self.nl.report(
-            f"[(list {' '.join(variable_name(v) for v in names)})] of {self.to_netlogo()}")
+            f"[(list {' '.join(self.nl._variable_name(v) for v in names)})] of {self.to_netlogo()}")
         return dict(zip(names, values))
 
     # -- code in the agent's context -----------------------------------------------
@@ -124,7 +160,7 @@ class Agent:
 
     def of(self, reporter: str) -> Any:
         """Evaluate a NetLogo reporter as this agent (``[reporter] of agent``)."""
-        return self.nl.report(f"[{reporter}] of {self.to_netlogo()}")
+        return self.nl.report(f"[{_c(reporter)}] of {self.to_netlogo()}")
 
     @property
     def alive(self) -> bool:
@@ -177,8 +213,12 @@ class Turtle(Agent):
 
     @property
     def breed(self) -> str:
-        """Breed name in plural form (``'turtles'`` for unbreeded turtles)."""
+        """Breed name in plural form (``'turtles'`` for unbreeded turtles); assign it to change the breed."""
         return self.of("(word breed)")
+
+    @breed.setter
+    def breed(self, breed: str) -> None:
+        self.set_breed(breed)
 
     def set_breed(self, breed: str) -> "Turtle":
         """Change the breed (plural form, e.g. ``'wolves'``)."""
@@ -218,11 +258,11 @@ class Turtle(Agent):
 
     def move_to(self, agent: Agent) -> "Turtle":
         """Move to the position of a turtle or patch (``move-to``)."""
-        return self.ask(f"move-to {agent.to_netlogo()}")
+        return self.ask(f"move-to {self.nl._ref(agent)}")
 
     def face(self, agent: Agent) -> "Turtle":
         """Turn towards a turtle or a patch (``face``)."""
-        return self.ask(f"face {agent.to_netlogo()}")
+        return self.ask(f"face {self.nl._ref(agent)}")
 
     def facexy(self, x: float, y: float) -> "Turtle":
         """Turn towards the point (x, y) (``facexy``)."""
@@ -276,7 +316,7 @@ class Turtle(Agent):
     # geometry
     def distance(self, agent: Agent) -> float:
         """Distance to a turtle or a patch (``distance``)."""
-        return self.of(f"distance {agent.to_netlogo()}")
+        return self.of(f"distance {self.nl._ref(agent)}")
 
     def distancexy(self, x: float, y: float) -> float:
         """Distance to the point (x, y) (``distancexy``)."""
@@ -284,7 +324,7 @@ class Turtle(Agent):
 
     def towards(self, agent: Agent) -> float:
         """Heading pointing to ``agent``."""
-        return self.of(f"towards {agent.to_netlogo()}")
+        return self.of(f"towards {self.nl._ref(agent)}")
 
     def towardsxy(self, x: float, y: float) -> float:
         """Heading pointing to the point (x, y) (``towardsxy``)."""
@@ -324,14 +364,19 @@ class Turtle(Agent):
         """Turtles on the same patch, this one included (``turtles-here``)."""
         return self.of(f"sort {breed}-here")
 
-    def in_radius(self, radius: float, agents: str = "turtles", other: bool = False) -> List[Agent]:
-        """Agents of ``agents`` within ``radius`` (this turtle included unless ``other``)."""
-        return self.of(f"sort {'other ' if other else ''}({agents}) in-radius {_num(radius)}")
+    def in_radius(self, radius: float, agents: Union[str, Agent, Sequence[Agent]] = "turtles",
+                  other: bool = False) -> List[Agent]:
+        """Agents of ``agents`` within ``radius`` (this turtle included unless ``other``).
 
-    def in_cone(self, radius: float, angle: float, agents: str = "turtles",
+        ``agents`` is NetLogo code (``"turtles"``, ``"patches"``, a breed...),
+        an agent or a list of agents.
+        """
+        return self.of(f"sort {'other ' if other else ''}{self.nl._set(agents)} in-radius {_num(radius)}")
+
+    def in_cone(self, radius: float, angle: float, agents: Union[str, Agent, Sequence[Agent]] = "turtles",
                 other: bool = False) -> List[Agent]:
         """Agents in the vision cone of ``angle`` degrees and depth ``radius``."""
-        return self.of(f"sort {'other ' if other else ''}({agents}) "
+        return self.of(f"sort {'other ' if other else ''}{self.nl._set(agents)} "
                        f"in-cone {_num(radius)} {_num(angle)}")
 
     def hatch(self, count: int = 1, breed: Optional[str] = None,
@@ -340,7 +385,7 @@ class Turtle(Agent):
         count = int(count)
         if count <= 0:
             return []
-        values = assignments({**(variables or {}), **kwargs})
+        values = assignments({**(variables or {}), **kwargs}, self.nl._variable_name)
         if breed == "turtles":             # no hatch-turtles primitive
             primitive, values = "hatch", f"set breed turtles {values}"
         else:
@@ -392,7 +437,7 @@ class Turtle(Agent):
 
     def link_with(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
         """The link between this turtle and ``other`` (None if there is none)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return self._link_query(f"link-with {target}", f"{{singular}}-with {target}", breed)
 
     def create_links_with(self, others: Sequence["Turtle"], breed: Optional[str] = None,
@@ -412,48 +457,48 @@ class Turtle(Agent):
 
     def is_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
         """True if a link joins this turtle and ``other`` (``link-neighbor?``)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return bool(self._link_query(f"link-neighbor? {target}", f"{{singular}}-neighbor? {target}", breed))
 
     def is_in_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
         """True if a link comes from ``other`` to this turtle (``in-link-neighbor?``)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return bool(self._link_query(f"in-link-neighbor? {target}", f"in-{{singular}}-neighbor? {target}", breed))
 
     def is_out_link_neighbor(self, other: "Turtle", breed: Optional[str] = None) -> bool:
         """True if a link goes from this turtle to ``other`` (``out-link-neighbor?``)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return bool(self._link_query(f"out-link-neighbor? {target}", f"out-{{singular}}-neighbor? {target}", breed))
 
     def in_link_from(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
         """The link coming from ``other`` to this turtle (None if there is none)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return self._link_query(f"in-link-from {target}", f"in-{{singular}}-from {target}", breed)
 
     def out_link_to(self, other: "Turtle", breed: Optional[str] = None) -> Optional["Link"]:
         """The link going from this turtle to ``other`` (None if there is none)."""
-        target = other.to_netlogo()
+        target = self.nl._ref(other)
         return self._link_query(f"out-link-to {target}", f"out-{{singular}}-to {target}", breed)
 
     # gradients
     def uphill(self, patch_variable: str) -> "Turtle":
         """Move to the neighbouring patch (8 neighbours) with the highest value."""
-        self.nl.command(f"ask {self.to_netlogo()} [ uphill {variable_name(patch_variable)} ]")
+        self.nl.command(f"ask {self.to_netlogo()} [ uphill {self.nl._variable_name(patch_variable)} ]")
         return self
 
     def uphill4(self, patch_variable: str) -> "Turtle":
         """Move to the neighbouring patch (4 neighbours) with the highest value."""
-        self.nl.command(f"ask {self.to_netlogo()} [ uphill4 {variable_name(patch_variable)} ]")
+        self.nl.command(f"ask {self.to_netlogo()} [ uphill4 {self.nl._variable_name(patch_variable)} ]")
         return self
 
     def downhill(self, patch_variable: str) -> "Turtle":
         """Move to the neighbouring patch (8 neighbours) with the lowest value."""
-        self.nl.command(f"ask {self.to_netlogo()} [ downhill {variable_name(patch_variable)} ]")
+        self.nl.command(f"ask {self.to_netlogo()} [ downhill {self.nl._variable_name(patch_variable)} ]")
         return self
 
     def downhill4(self, patch_variable: str) -> "Turtle":
         """Move to the neighbouring patch (4 neighbours) with the lowest value."""
-        self.nl.command(f"ask {self.to_netlogo()} [ downhill4 {variable_name(patch_variable)} ]")
+        self.nl.command(f"ask {self.to_netlogo()} [ downhill4 {self.nl._variable_name(patch_variable)} ]")
         return self
 
     def turtles_at(self, dx: float, dy: float, breed: str = "turtles") -> List["Turtle"]:
@@ -522,15 +567,16 @@ class Patch(Agent):
 
     def distance(self, agent: Agent) -> float:
         """Distance from the center of this patch to a turtle or a patch (``distance``)."""
-        return self.of(f"distance {agent.to_netlogo()}")
+        return self.of(f"distance {self.nl._ref(agent)}")
 
     def distancexy(self, x: float, y: float) -> float:
         """Distance from the center of this patch to the point (x, y) (``distancexy``)."""
         return self.of(f"distancexy {_num(x)} {_num(y)}")
 
-    def in_radius(self, radius: float, agents: str = "patches", other: bool = False) -> List[Agent]:
+    def in_radius(self, radius: float, agents: Union[str, Agent, Sequence[Agent]] = "patches",
+                  other: bool = False) -> List[Agent]:
         """Agents of ``agents`` within ``radius`` (this patch included unless ``other``)."""
-        return self.of(f"sort {'other ' if other else ''}({agents}) in-radius {_num(radius)}")
+        return self.of(f"sort {'other ' if other else ''}{self.nl._set(agents)} in-radius {_num(radius)}")
 
     def turtles_at(self, dx: int, dy: int, breed: str = "turtles") -> List[Turtle]:
         """Turtles on the patch at (dx, dy) from this patch."""
@@ -547,7 +593,7 @@ class Patch(Agent):
         if count <= 0:
             return []
         primitive = f"sprout-{breed}" if breed and breed != "turtles" else "sprout"
-        values = assignments({**(variables or {}), **kwargs})
+        values = assignments({**(variables or {}), **kwargs}, self.nl._variable_name)
         return self.nl._create(f"ask {self.to_netlogo()} [ {primitive} {count} [ {values} ] ]")
 
 
@@ -576,7 +622,9 @@ class Link(Agent):
         return f"{self._singular} {self.end1_who} {self.end2_who}"
 
     def _key(self) -> tuple:
-        return ("link", self.breed, self.end1_who, self.end2_who)
+        ends = (self.end1_who, self.end2_who)
+        # An undirected link is the same link whichever end is named first.
+        return ("link", self.breed) + (ends if self.directed else tuple(sorted(ends)))
 
     def __repr__(self) -> str:
         arrow = "->" if self.directed else "--"
@@ -598,9 +646,13 @@ class Link(Agent):
         return [self.end1, self.end2]
 
     def other_end(self, turtle: Union[Turtle, int]) -> Turtle:
-        """The end that is not ``turtle``."""
+        """The end that is not ``turtle`` (ValueError when ``turtle`` is not an end of the link)."""
         who = turtle.who if isinstance(turtle, Turtle) else int(turtle)
-        return self.end2 if who == self.end1_who else self.end1
+        if who == self.end1_who:
+            return self.end2
+        if who == self.end2_who:
+            return self.end1
+        raise ValueError(f"turtle {who} is not an end of {self!r}")
 
     color = _variable("color", "Color of the link.")
     label = _variable("label", "Text shown on the link.")

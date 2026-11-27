@@ -13,7 +13,9 @@ including base.nls (``__includes [ "base.nls" ]``, see :func:`reset_base_file`).
 import copy
 import os
 import shutil
-from typing import Any, List, Optional
+import warnings
+from collections.abc import MutableMapping
+from typing import Any, Iterator, List, Optional, Union
 
 from .agents import Link, Patch, Turtle
 from .convert import Code, to_netlogo
@@ -67,7 +69,11 @@ def run_netlogo(netlogo_home: Optional[str] = None, path_model: str = "",
     gui          : False for headless (default: window, unless NETLOGOPY_HEADLESS=1).
     """
     nl = run_netlogo_model(netlogo_home, path_model, gui=gui)
-    nl.command("setup")
+    try:
+        nl.command("setup")
+    except BaseException:
+        nl.close()
+        raise
     return nl
 
 
@@ -83,8 +89,8 @@ def run_netlogo_model(netlogo_home: Optional[str], path_model: str = "",
     A model of your own also receives netlogopy's shapes (car, person_0,
     machine...) for the session, so pyturtles look the same in every model.
     """
-    list_pyturtle.clear()
-    list_street.clear()
+    list_pyturtle[:] = [item for item in list_pyturtle if not item.nl.closed]
+    list_street[:] = [item for item in list_street if not item.nl.closed]
     nl = NetLogo(path_model or None, gui=_default_gui() if gui is None else gui,
                  netlogo_home=netlogo_home)
     if path_model:
@@ -145,7 +151,13 @@ resize_world_direct = resize_world
 
 
 def set_background(n: NetLogo, image: str) -> None:
-    """Draw an image behind the agents (relative paths: relative to the model)."""
+    """Draw an image behind the agents.
+
+    A relative path is looked for in the current folder first, then next to
+    the model, where NetLogo itself looks.
+    """
+    if not os.path.isabs(image) and os.path.isfile(image):
+        image = os.path.abspath(image)
     n.command(f"import-drawing {to_netlogo(image)}")
 
 
@@ -170,14 +182,15 @@ def clear_drawing(n: NetLogo) -> None:
 def clear_all(n: NetLogo) -> None:
     """``clear-all``: agents, patches, globals, ticks, drawing, plots."""
     n.clear_all()
-    list_pyturtle.clear()
-    list_street.clear()
+    list_pyturtle[:] = [item for item in list_pyturtle if item.nl is not n]
+    list_street[:] = [item for item in list_street if item.nl is not n]
 
 
 def clear_all_turtles(n: NetLogo) -> None:
-    """Kill every pyturtle."""
+    """Kill every pyturtle (their streets die with them)."""
     n.command("ask pyturtles [ die ]")
-    list_pyturtle.clear()
+    list_pyturtle[:] = [item for item in list_pyturtle if item.nl is not n]
+    list_street[:] = [item for item in list_street if item.nl is not n or item.alive]
 
 
 def get_ticks(n: NetLogo) -> int:
@@ -510,8 +523,7 @@ class turtle(Turtle):
     def dieturtle(self) -> None:
         """Kill the turtle and remove it from ``list_pyturtle``."""
         self.die()
-        if self in list_pyturtle:
-            list_pyturtle.remove(self)
+        list_pyturtle[:] = [item for item in list_pyturtle if item is not self]
 
     # pen (NetLogo draws with the turtle's own color)
     def set_pen_color(self, color: float) -> None:
@@ -531,13 +543,79 @@ class turtle(Turtle):
         """Set the color of the patch under the turtle."""
         self.ask(f"set pcolor {to_netlogo(color)}")
 
-    def in_radius(self, radius: float) -> List[int]:  # type: ignore[override]
-        """Who numbers of the OTHER turtles within ``radius``."""
-        return [int(w) for w in self.of(f"sort [who] of other turtles in-radius {to_netlogo(radius)}")]
+    def in_radius(self, radius: float, agents: Any = None,  # type: ignore[override]
+                  other: Optional[bool] = None) -> list:
+        """``in_radius(radius)``, the 0.x form: who numbers of the OTHER turtles within ``radius``.
 
-    def turtles_here(self) -> List[int]:  # type: ignore[override]
-        """Who numbers of the OTHER turtles on the same patch."""
-        return [int(w) for w in self.of("sort [who] of other turtles-here")]
+        With ``agents`` or ``other`` it is :meth:`Turtle.in_radius` and returns agents.
+        """
+        if agents is None and other is None:
+            return [int(w) for w in self.of(f"sort [who] of other turtles in-radius {to_netlogo(radius)}")]
+        return Turtle.in_radius(self, radius, "turtles" if agents is None else agents, bool(other))
+
+    def turtles_here(self, breed: Optional[str] = None) -> list:  # type: ignore[override]
+        """``turtles_here()``, the 0.x form: who numbers of the OTHER turtles on the same patch.
+
+        With ``breed`` it is :meth:`Turtle.turtles_here` and returns turtles.
+        """
+        if breed is None:
+            return [int(w) for w in self.of("sort [who] of other turtles-here")]
+        return Turtle.turtles_here(self, breed)
+
+    def fd(self, steps: Optional[float] = None, *, distance: Optional[float] = None) -> Turtle:
+        """Move forward; ``steps`` is the 0.x name of the distance."""
+        return Turtle.forward(self, _first(steps, distance, 1))
+
+    def bk(self, steps: Optional[float] = None, *, distance: Optional[float] = None) -> Turtle:
+        """Move backward; ``steps`` is the 0.x name of the distance."""
+        return Turtle.back(self, _first(steps, distance, 1))
+
+    def move_to(self, target: Optional[Union[Turtle, Patch]] = None, *,  # type: ignore[override]
+                agent: Optional[Union[Turtle, Patch]] = None) -> Turtle:
+        """Move to a turtle or a patch; ``target`` is the 0.x name of the agent."""
+        return Turtle.move_to(self, _first(target, agent))
+
+
+def _first(*values: Any) -> Any:
+    """The first value given (not None) among the spellings of one argument."""
+    for value in values:
+        if value is not None:
+            return value
+    raise TypeError("an argument is missing")
+
+
+class _Fields(MutableMapping):
+    """The extra attributes of a pyturtle, as a dict.
+
+    They are the attributes of the object.  A name that :class:`Turtle`
+    already uses (``color``, ``size``, ``distance``...) cannot become an
+    attribute: its value is kept here only.
+    """
+
+    def __init__(self, owner: "pyturtle"):
+        self._owner = owner
+
+    def _store(self, key: str) -> dict:
+        owner = self._owner
+        return owner._reserved if hasattr(type(owner), key) else owner.__dict__
+
+    def __getitem__(self, key: str) -> Any:
+        return self._store(key)[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self._store(key)[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._store(key)[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(list(self._owner.__dict__) + list(self._owner._reserved))
+
+    def __len__(self) -> int:
+        return len(self._owner.__dict__) + len(self._owner._reserved)
+
+    def __repr__(self) -> str:
+        return repr(dict(self))
 
 
 class pyturtle(turtle):
@@ -551,8 +629,12 @@ class pyturtle(turtle):
     name       : label text
     labelcolor : label color
     fields     : extra Python attributes stored on the object, readable as
-                 attributes (``car.busy``) or through ``car.fields["busy"]``
+                 attributes (``car.busy``) or through ``car.fields["busy"]``.
+                 A name that Turtle already uses (``color``, ``size``...)
+                 is only readable through ``car.fields``.
     """
+
+    __slots__ = ("_reserved",)
 
     def __init__(self, n: NetLogo, x: float = 0, y: float = 0, shape: str = "car",
                  size_shape: float = 4, color: float = 0, name: str = "zn",
@@ -562,14 +644,26 @@ class pyturtle(turtle):
                                    size=size_shape, color=color, label=name,
                                    label_color=labelcolor)
         turtle.__init__(self, n, created[0].who)
+        self._reserved: dict = {}
         if fields:
-            self.__dict__.update(fields)
+            self.fields.update(fields)
+            if self._reserved:
+                warnings.warn(
+                    "pyturtle fields named like Turtle attributes are not attributes of the object: "
+                    f"read {', '.join(sorted(self._reserved))} through .fields[...]", UserWarning, stacklevel=2)
+        # NetLogo gave this who number again (after a setup): the object that had it is outdated.
+        list_pyturtle[:] = [item for item in list_pyturtle if not (item.nl is n and item.who == self.who)]
         list_pyturtle.append(self)
 
     @property
-    def fields(self) -> dict:
+    def fields(self) -> MutableMapping:
         """The extra Python attributes, as a live dict: ``car.fields["busy"]`` is ``car.busy``."""
-        return self.__dict__
+        return _Fields(self)
+
+    def __deepcopy__(self, memo: dict) -> "pyturtle":
+        clone = turtle.__deepcopy__(self, memo)
+        clone._reserved = copy.deepcopy(self._reserved, memo)
+        return clone
 
 
 class street(Link):
@@ -584,6 +678,8 @@ class street(Link):
                              thickness=thickness)
         Link.__init__(self, n, link.end1_who, link.end2_who, breed="streets",
                       directed=True, singular="street")
+        # The same street asked twice is one link in NetLogo: one entry in the list.
+        list_street[:] = [item for item in list_street if item != self]
         list_street.append(self)
 
     @property

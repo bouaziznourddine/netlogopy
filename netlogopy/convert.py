@@ -38,6 +38,15 @@ class Code(str):
         return f"Code({str(self)!r})"
 
 
+def _c(code: str) -> str:
+    """``code`` ready to be followed by a closing bracket.
+
+    A NetLogo comment (``;``) runs to the end of the line, so code that holds
+    one gets a new line: the comment must not swallow the bracket.
+    """
+    return code + "\n" if ";" in code else code
+
+
 def _quote(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     return '"' + (text.replace("\\", "\\\\").replace('"', '\\"')
@@ -71,6 +80,11 @@ def to_netlogo(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, numbers.Integral):
+        if abs(int(value)) > 2 ** 53:      # NetLogo numbers are doubles: no exact integer beyond that
+            try:
+                return repr(float(value))
+            except OverflowError:
+                raise ValueError(f"{value!r} is too large for a NetLogo number") from None
         return str(int(value))
     if isinstance(value, numbers.Real):
         number = float(value)

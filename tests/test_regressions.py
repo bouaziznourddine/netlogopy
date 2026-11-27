@@ -1,13 +1,16 @@
 """Defects fixed in 1.0.1, each pinned by a test against a real NetLogo (headless)."""
 
+import copy
 import gc
+import os
+import shutil
 import threading
 import time
 
 import pytest
 from conftest import FIRE_MODEL, WOLF_MODEL
 
-from netlogopy import NetLogo, NetLogoError, NetLogoRuntimeError, Patch, Turtle, _java
+from netlogopy import Link, NetLogo, NetLogoError, NetLogoRuntimeError, Patch, Turtle, _java, to_netlogo
 
 pytestmark = pytest.mark.netlogo
 
@@ -441,3 +444,111 @@ def test_diffuse_refuses_a_wrong_number_of_neighbours(nl):
     with pytest.raises(ValueError, match="4 or 8"):
         nl.diffuse("pcolor", 0.5, neighbors=5)
     nl.diffuse("pcolor", 0.5, neighbors=4)
+
+
+# ─── agent handles ───────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def own(tmp_path_factory):
+    """The Fire model plus turtle variables named like parameters of set() and like aliases."""
+    path = tmp_path_factory.mktemp("model") / "own.nlogo"
+    shutil.copy(os.path.join(os.path.dirname(FIRE_MODEL), "base.nls"), path.parent)    # the model includes it
+    with open(FIRE_MODEL, encoding="utf-8") as source:
+        code = source.read().replace("to setup", "turtles-own [ value variable hidden label_color ]\nto setup", 1)
+    path.write_text(code, encoding="utf-8")
+    session = NetLogo(path)
+    yield session
+    session.close()
+
+
+def test_set_takes_every_keyword_as_a_variable(own):
+    own.command("clear-all")
+    turtle = own.create_turtles(1)[0]
+    turtle.set(value=5, variable=7)                # they used to be taken for the parameters of set()
+    assert (turtle.get("value"), turtle["variable"]) == (5.0, 7.0)
+    turtle.set("value", 9)
+    assert turtle.get("value") == 9.0
+    with pytest.raises(TypeError, match="needs a value"):
+        turtle.set("value")
+    turtle.set("label", None)
+    assert turtle.label is None
+
+
+def test_set_keeps_its_keyword_form_when_the_model_has_no_such_variable(nl):
+    turtle = nl.create_turtles(1)[0]
+    turtle.set(variable="color", value=15)
+    assert turtle.color == 15
+
+
+def test_a_model_variable_spelled_like_an_alias_is_that_variable(own):
+    own.command("clear-all")
+    turtle = own.create_turtles(1, hidden=42)[0]
+    assert turtle.get("hidden") == 42.0 and own.report("[hidden?] of turtle 0") is False
+    turtle.set(label_color=8)
+    assert turtle.get("label_color") == 8.0 and own.report("[label-color] of turtle 0") != 8.0
+    assert turtle.get_many(["hidden", "label_color"]) == {"hidden": 42.0, "label_color": 8.0}
+    assert turtle.hidden is False                  # the property is still the built-in hidden?
+
+
+def test_breed_is_read_and_written_by_name(nl):
+    turtle = nl.create_turtles(1)[0]
+    assert turtle.breed == "turtles" == turtle["breed"] == turtle.get("breed")
+    turtle.breed = "pyturtles"
+    assert turtle.breed == "pyturtles" and nl.count("pyturtles") == 1
+    turtle.set(breed="turtles", size=3)
+    assert (turtle.breed, turtle.size) == ("turtles", 3.0)
+    turtle["breed"] = "pyturtles"
+    assert turtle.get("breed") == "pyturtles"
+    street = nl.create_link(turtle, nl.create_turtles(1)[0], breed="streets")
+    assert street.get("breed") == "streets" == street.breed
+
+
+def test_small_agent_fixes(nl):
+    a, b, c = nl.create_turtles(3)
+    assert a.get_many("color") == {"color": a.color}
+    clone = copy.deepcopy(a)
+    assert clone == a and clone is not a and clone.nl is nl
+    street = nl.create_link(a, b, breed="streets")
+    assert street.other_end(a) == b and street.other_end(b.who) == a
+    with pytest.raises(ValueError, match="not an end"):
+        street.other_end(c)
+    assert a.in_radius(100, [b, c]) == [b, c] and a.in_radius(100, [a, b], other=True) == [b]
+    assert a.in_cone(100, 360, [c]) == [c] and nl.patch(0, 0).in_radius(1000, [a]) == [a]
+    assert a.in_radius(100, []) == [] and a.of("who ; its number") == 0.0
+
+
+def test_integers_too_large_for_netlogo(nl):
+    assert to_netlogo(2 ** 53) == str(2 ** 53)
+    assert nl.report(to_netlogo(10 ** 18)) == 1e18 and nl.report(to_netlogo(-(10 ** 18))) == -1e18
+    turtle = nl.create_turtles(1)[0]
+    turtle.label = [10 ** 20]
+    assert turtle.label == [1e20]
+    with pytest.raises(ValueError, match="too large"):
+        to_netlogo(10 ** 400)
+
+
+def test_an_undirected_link_is_the_same_whichever_end_comes_first():
+    with NetLogo(FIRE_MODEL) as fire:
+        fire.command("clear-all", "crt 4")
+        link = fire.create_link(1, 3)
+        assert Link(fire, 3, 1) == link == Link(fire, 1, 3) and hash(Link(fire, 3, 1)) == hash(link)
+        assert Link(fire, 3, 1).alive and len({link, Link(fire, 3, 1)}) == 1
+
+
+def test_agent_methods_refuse_agents_of_another_session(nl):
+    with NetLogo() as other:
+        theirs = other.create_turtles(3)[2]
+        mine = nl.create_turtles(3)[0]
+        for call in (lambda: mine.distance(theirs), lambda: mine.face(theirs), lambda: mine.move_to(theirs),
+                     lambda: mine.towards(theirs), lambda: mine.link_with(theirs),
+                     lambda: mine.create_link_with(theirs), lambda: mine.is_link_neighbor(theirs),
+                     lambda: mine.out_link_to(theirs), lambda: mine.in_radius(5, [theirs]),
+                     lambda: nl.patch(1, 1).distance(theirs)):
+            with pytest.raises(ValueError, match="another NetLogo session"):
+                call()
+
+
+def test_the_bundled_model_is_the_one_that_was_shipped(nl):
+    # A model file that NetLogo saved over loses or gains globals: see the autosave tests.
+    assert sorted(nl.global_names()) == ["scenario", "show-label", "speed", "user-text"]
+    assert nl.breeds() == {"turtles": ["pyturtles"], "links": ["streets"]}

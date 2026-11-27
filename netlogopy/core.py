@@ -21,7 +21,7 @@ from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from . import _java
 from .agents import Agent, Link, Patch, Turtle, assignments, variable_name
-from .convert import Code, from_java, to_netlogo
+from .convert import Code, _c, from_java, to_netlogo
 from .errors import NetLogoCompileError, NetLogoError, NetLogoRuntimeError
 from .widgets import WidgetsMixin
 
@@ -86,15 +86,6 @@ def _path(path: PathLike) -> str:
 def headless_forced() -> bool:
     """True when NETLOGOPY_HEADLESS=1: scripts written for the window run without it."""
     return os.environ.get("NETLOGOPY_HEADLESS", "").strip().lower() in ("1", "true", "yes", "on")
-
-
-def _c(code: str) -> str:
-    """``code`` ready to be followed by a closing bracket.
-
-    A NetLogo comment (``;``) runs to the end of the line, so code that holds
-    one gets a new line: the comment must not swallow the bracket.
-    """
-    return code + "\n" if ";" in code else code
 
 
 def _agents(agents: Any) -> Any:
@@ -284,6 +275,7 @@ class NetLogo(WidgetsMixin):
         self._owner: Any = None
         self._patch_class: Any = None
         self._singulars: Dict[str, str] = {}
+        self._alias_clash: Dict[str, bool] = {}    # alias -> the model has a variable spelled so
         self._handle: Optional[_java.WorkspaceHandle] = None
         self._runner: Optional[_BackgroundRun] = None
         self._directory: Optional[str] = None      # set by set_current_directory()
@@ -357,6 +349,7 @@ class NetLogo(WidgetsMixin):
                 raise type(error)(f"cannot open {path}: {error.message}") from None
             self._cache.clear()
             self._singulars.clear()
+            self._alias_clash.clear()
             self._owner = None
             self._directory = None
             self._procedures_id = self._procedures_identity()
@@ -499,10 +492,38 @@ class NetLogo(WidgetsMixin):
                 return world.fastGetPatchAt(agent.pxcor, agent.pycor)
         return None
 
+    def _declares(self, name: str) -> bool:
+        """True when the model has an agent variable spelled ``name``."""
+        upper, world = name.upper(), self._ws.world()
+        try:
+            if max(world.turtlesOwnIndexOf(upper), world.patchesOwnIndexOf(upper),
+                   world.linksOwnIndexOf(upper)) >= 0:
+                return True
+            if any(world.breedsOwnIndexOf(breed, upper) >= 0 for breed in world.breeds().values()):
+                return True
+            return any(world.linkBreedsOwnIndexOf(breed, upper) >= 0
+                       for breed in world.linkBreeds().values())
+        except Exception:                          # a NetLogo whose API differs: keep the alias
+            return False
+
+    def _variable_name(self, name: str) -> str:
+        """NetLogo name of an agent variable.
+
+        The Python-friendly aliases (``label_color`` for ``label-color``,
+        ``hidden`` for ``hidden?``...) apply unless the model has a variable
+        spelled exactly so: that one is then the variable meant.
+        """
+        alias = variable_name(name)
+        if alias == name:
+            return name
+        clash = self._alias_clash.get(name)
+        if clash is None:
+            clash = self._alias_clash[name] = self._declares(name)
+        return name if clash else alias
+
     def _variable_index(self, java_agent: Any, name: str) -> int:
-        from .agents import variable_name
         world = self._ws.world()
-        upper = variable_name(name).upper()
+        upper = self._variable_name(name).upper()
         if isinstance(java_agent, self._java_patch_class()):
             return int(world.patchesOwnIndexOf(upper))
         index = int(world.turtlesOwnIndexOf(upper))
@@ -641,6 +662,7 @@ class NetLogo(WidgetsMixin):
                 self._procedures_id = identity
                 self._cache.clear()
                 self._singulars.clear()
+                self._alias_clash.clear()
         key = (reporter, source)
         procedure = self._cache.get(key)
         if procedure is not None:
@@ -1290,7 +1312,7 @@ class NetLogo(WidgetsMixin):
         if count <= 0:
             return []
         primitive = "create-ordered-" if ordered else "create-"
-        values = assignments({**(variables or {}), **kwargs})
+        values = assignments({**(variables or {}), **kwargs}, self._variable_name)
         return self._create(f"{primitive}{breed or 'turtles'} {count} [ {values} ]")
 
     def _create(self, code: str) -> List[Turtle]:
@@ -1350,7 +1372,7 @@ class NetLogo(WidgetsMixin):
         breed = breed or "links"
         if directed is None:
             directed = self._link_breed_directed(breed) if breed != "links" else False
-        values = assignments({**(variables or {}), **kwargs})
+        values = assignments({**(variables or {}), **kwargs}, self._variable_name)
         primitive = f"create-{breed}-{'to' if directed else 'with'}"
         with self._lock:                           # creation and lookup are one operation
             self._check_open()
@@ -1459,7 +1481,7 @@ class NetLogo(WidgetsMixin):
         list of list or numpy.ndarray
             ``grid[row][col]`` is the patch ``(min_pxcor + col, max_pycor - row)``.
         """
-        grid = self.report(self._GRID.format(var=variable_name(variable)))
+        grid = self.report(self._GRID.format(var=self._variable_name(variable)))
         if as_array:
             import numpy
             return numpy.array(grid)
@@ -1475,7 +1497,7 @@ class NetLogo(WidgetsMixin):
             raise shape from None
         if len(rows) != height or any(len(row) != width for row in rows):
             raise shape
-        name = variable_name(variable)
+        name = self._variable_name(variable)
         try:
             self.command(
                 f"(foreach (range max-pycor (min-pycor - 1) -1) {to_netlogo(rows)} [ [__y __row] -> "
@@ -1500,7 +1522,7 @@ class NetLogo(WidgetsMixin):
         if neighbors not in (4, 8):
             raise ValueError("neighbors must be 4 or 8")
         primitive = "diffuse4" if neighbors == 4 else "diffuse"
-        self.command(f"{primitive} {variable_name(variable)} {to_netlogo(rate)}")
+        self.command(f"{primitive} {self._variable_name(variable)} {to_netlogo(rate)}")
 
     def import_pcolors(self, path: PathLike, rgb: bool = False) -> None:
         """Color the patches from an image."""

@@ -6,7 +6,7 @@ import pytest
 from conftest import EXAMPLES, FIRE_MODEL, WOLF_MODEL
 
 import netlogopy.netlogopy as legacy
-from netlogopy import NetLogo, NetLogoCompileError
+from netlogopy import NetLogo, NetLogoCompileError, NetLogoRuntimeError
 
 pytestmark = pytest.mark.netlogo
 
@@ -222,3 +222,98 @@ def test_run_netlogo_honours_netlogopy_headless(monkeypatch):
         assert not n.gui and n.ticks == 0
     finally:
         n.close()
+
+
+# ─── 0.x scripts that 1.0.0 broke ────────────────────────────────────────────────
+
+def test_fields_named_like_turtle_attributes(n):
+    with pytest.warns(UserWarning, match="color, distance, kind, size"):
+        car = legacy.pyturtle(n, x=10, y=10, color=15, fields={"color": "red", "size": "big", "distance": 12,
+                                                              "kind": "truck", "speed": 3})
+    other = legacy.pyturtle(n, x=13, y=14)
+    assert car.fields == {"color": "red", "size": "big", "distance": 12, "kind": "truck", "speed": 3}
+    assert car.speed == 3 and car.fields["color"] == "red"
+    assert (car.color, car.size, car.kind) == (15.0, 4.0, "turtle")      # NetLogo's values: nothing is shadowed
+    assert car.distanceto(other) == 5.0                         # used to be: 'int' object is not callable
+    n.ask([car], "fd 1")                                        # used to be: KeyError 'truck'
+    car.fields["speed"] = 4
+    car.fields["size"] = "small"
+    assert car.speed == 4 and car.fields["size"] == "small" and car.size == 4.0
+    del car.fields["distance"]
+    assert "distance" not in car.fields and len(car.fields) == 4
+
+
+def test_parameter_names_of_the_first_versions(n):
+    car = legacy.pyturtle(n, x=30, y=30)
+    other = legacy.pyturtle(n, x=30, y=33)
+    car.set_heading(0)
+    car.fd(steps=2)
+    car.bk(steps=1)
+    car.fd()
+    assert car.get_xy() == [30.0, 32.0]
+    car.fd(distance=1)                                         # and the 1.0 name
+    car.move_to(target=other)
+    assert car.get_xy() == [30.0, 33.0]
+    car.move_to(agent=n.patch(5, 6))
+    assert car.get_xy() == [5.0, 6.0]
+    car.move_to(other)
+    assert car.in_radius(2) == [other.who] and car.turtles_here() == [other.who]       # the 0.x results
+    assert car.in_radius(2, "pyturtles") == [car, other]                               # the 1.0 forms
+    assert car.in_radius(2, other=True) == [other] and car.turtles_here("pyturtles") == [car, other]
+    assert car.in_radius(2, "patches")[0] == n.patch(30, 35)       # patches come from the top, row by row
+
+
+def test_objects_of_before_a_setup_leave_the_lists(n):
+    old = legacy.pyturtle(n, x=3, y=3, name="old")
+    n.setup()                                                  # clear-all: who numbers start again
+    new = legacy.pyturtle(n, x=40, y=40, name="new")
+    assert legacy.list_pyturtle == [new] and legacy.get_turtle_by_id(0) is new and old is not new
+    extra = legacy.pyturtle(n, x=1, y=1)
+    twin = legacy.de_copy(extra)                               # a copy designates the same turtle
+    assert twin == extra and twin is not extra and twin.n is n
+    twin.dieturtle()                                           # only the object asked is removed
+    assert legacy.list_pyturtle == [new, extra] and not extra.alive
+
+
+def test_a_street_asked_twice_is_one_street(n):
+    a, b = legacy.pyturtle(n, x=1, y=1), legacy.pyturtle(n, x=5, y=5)
+    first = legacy.street(n, a, b, label="first")
+    second = legacy.street(n, a, b, label="second")
+    assert legacy.list_street == [second] and first == second and n.count("streets") == 1
+    assert second.label == "first"                             # NetLogo keeps the link it already has
+    legacy.clear_all_turtles(n)
+    assert legacy.list_street == [] and legacy.list_pyturtle == []
+
+
+def test_a_second_session_does_not_empty_the_lists_of_the_first(n):
+    car = legacy.pyturtle(n, x=2, y=2)
+    second = legacy.run_netlogo(gui=False)
+    try:
+        assert legacy.list_pyturtle == [car] and legacy.count_pyturtles(n) == 1
+        other = legacy.pyturtle(second, x=2, y=2)              # the same who number, another session
+        assert legacy.list_pyturtle == [car, other] and car != other
+        legacy.clear_all(second)
+        assert legacy.list_pyturtle == [car]
+    finally:
+        second.close()
+    legacy.run_netlogo(gui=False).close()                      # the lists forget closed sessions only
+    assert legacy.list_pyturtle == [car]
+
+
+def test_set_background_takes_an_image_of_the_current_folder(n, monkeypatch):
+    monkeypatch.chdir(EXAMPLES)
+    legacy.set_background(n, "netlogopy.png")                  # used to be looked for next to the bundled model
+    with pytest.raises(NetLogoRuntimeError):
+        legacy.set_background(n, "no-such-image.png")
+
+
+def test_run_netlogo_closes_the_session_when_setup_fails(tmp_path):
+    from netlogopy import _java
+    model = tmp_path / "no-setup.nlogo"
+    legacy.reset_base_file(str(tmp_path))                      # the Fire model includes base.nls
+    with open(FIRE_MODEL, encoding="utf-8") as source:
+        model.write_text(source.read().replace("to setup", "to set-up"), encoding="utf-8")
+    before = len(_java._open_handles)
+    with pytest.raises(NetLogoCompileError, match="SETUP"):
+        legacy.run_netlogo(None, str(model), gui=False)
+    assert len(_java._open_handles) == before
