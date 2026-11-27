@@ -86,6 +86,15 @@ def test_parameter_grid():
         {"a": 2, "b": True, "c": 0}, {"a": 2, "b": True, "c": 1}]
 
 
+def test_parameter_grid_takes_any_collection():
+    numpy = pytest.importorskip("numpy")
+    grid = parameter_grid({"a": numpy.array([1, 2, 3]), "b": numpy.linspace(0, 1, 2), "c": "text", "d": 5})
+    assert grid == [{"a": a, "b": b, "c": "text", "d": 5} for a in (1, 2, 3) for b in (0.0, 1.0)]
+    assert all(type(row["a"]) is int and type(row["b"]) is float for row in grid)   # plain Python values
+    assert parameter_grid({"a": numpy.float64(2.5), "b": numpy.int64(3)}) == [{"a": 2.5, "b": 3}]
+    assert len(parameter_grid({"a": (letter for letter in "xy"), "b": {1}, "c": {"k": "v"}})) == 2
+
+
 def test_colors():
     assert colors.RED == 15 and len(colors.BASE_COLORS) == 14
     assert colors.shade(colors.RED, -3) == 12
