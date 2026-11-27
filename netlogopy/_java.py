@@ -379,6 +379,7 @@ class WorkspaceHandle:
         self.app = app
         self.owner: Any = None                 # weak reference to the NetLogo session
         self.closed = False
+        self.close_reason: Optional[str] = None    # why, when it was not the session's close()
         self._close_lock = threading.Lock()
         with _lock:
             _open_handles.append(self)
@@ -396,6 +397,11 @@ class WorkspaceHandle:
             pass
         try:
             if self.app is not None:
+                if self.close_reason:              # closed under a script: stop what it runs
+                    try:
+                        self.workspace.halt()
+                    except Exception:
+                        pass
                 _close_gui(self.app)
             else:
                 self.workspace.dispose()
@@ -480,10 +486,30 @@ def call_open(target: Any, path: str) -> None:
         target.open(path, False)
 
 
+def _i18n(key: str, default: str) -> str:
+    """NetLogo's own text for an interface string, in the language NetLogo runs in."""
+    try:
+        import jpype
+        return str(getattr(jpype.JClass("org.nlogo.core.I18N$"), "MODULE$").gui().get(key))
+    except Exception:                      # an older NetLogo without that string
+        return default
+
+
 #: Question NetLogo 7 asks when its window opens a model saved by NetLogo 6,
 #: and the answer netlogopy clicks (NetLogo's recommended choice).  Other
-#: questions are left to the user.
+#: questions are left to the user.  These are the English texts; the keys
+#: below give the texts of the language NetLogo runs in.
 _OPEN_DIALOG_ANSWERS = {"Convert Widgets to New Sizes": "Resize and adjust positions"}
+_OPEN_DIALOG_KEYS = {"menu.tools.convertWidgetSizes": "menu.tools.convertWidgetSizes.resizeAndAdjust"}
+
+
+def _open_dialog_answers() -> Dict[str, str]:
+    answers = dict(_OPEN_DIALOG_ANSWERS)
+    if _version_tuple(_jvm.get("version")) >= (7,):        # NetLogo 6 has neither the question nor its texts
+        for (title, answer), (title_key, answer_key) in zip(_OPEN_DIALOG_ANSWERS.items(),
+                                                            _OPEN_DIALOG_KEYS.items()):
+            answers[_i18n(title_key, title)] = _i18n(answer_key, answer)
+    return answers
 
 
 def _find_button(component: Any, text: str, button_class: Any) -> Any:
@@ -500,11 +526,12 @@ def _answer_open_dialogs(stop: threading.Event) -> None:
     import jpype
     window_class = jpype.JClass("java.awt.Window")
     button_class = jpype.JClass("javax.swing.AbstractButton")
+    answers = _open_dialog_answers()
     while not stop.wait(0.1):
         for window in window_class.getWindows():
             try:
                 title = str(window.getTitle()) if hasattr(window, "getTitle") else ""
-                answer = _OPEN_DIALOG_ANSWERS.get(title)
+                answer = answers.get(title)
                 if answer is None or not window.isVisible():
                     continue
                 button = _find_button(window, answer, button_class)
@@ -514,17 +541,188 @@ def _answer_open_dialogs(stop: threading.Event) -> None:
                 pass
 
 
+_HELD = "autosaves.netlogopy"       # a model's autosave folder while netlogopy opens that model
+
+
+def _private_field(owner: Any, name: str) -> Any:
+    field = owner.getClass().getDeclaredField(name)
+    field.setAccessible(True)
+    return field
+
+
+def _autosave_folder(path: str) -> Optional[str]:
+    """Folder where NetLogo 7 autosaves the model ``path`` (None with NetLogo 6, which has none)."""
+    try:
+        import jpype
+        config = getattr(jpype.JClass("org.nlogo.app.ModelConfig$"), "MODULE$")
+        # NetLogo names the folder after the path as it writes it itself.
+        name = jpype.JClass("java.nio.file.Paths").get(jpype.JClass("java.io.File")(path).toURI()).toString()
+        return os.path.join(str(config.getModelConfigPath(name).toString()), "autosaves")
+    except Exception:
+        return None
+
+
+def _restore_autosaves(folder: Optional[str]) -> None:
+    """Give a model its autosaves back (see :func:`open_in_gui`)."""
+    held = os.path.join(os.path.dirname(folder), _HELD) if folder else None
+    if not held or not os.path.isdir(held):
+        return
+    try:
+        os.makedirs(folder, exist_ok=True)
+        for name in os.listdir(held):
+            os.replace(os.path.join(held, name), os.path.join(folder, name))
+        os.rmdir(held)
+    except OSError:
+        pass
+
+
+def _hold_autosaves(folder: Optional[str]) -> None:
+    """Put a model's autosaves aside while netlogopy opens the model."""
+    if not folder:
+        return
+    _restore_autosaves(folder)             # left there by an open that was killed
+    try:
+        if os.path.isdir(folder) and os.listdir(folder):
+            os.replace(folder, os.path.join(os.path.dirname(folder), _HELD))
+    except OSError:
+        pass
+
+
+def _no_autosave(app: Any) -> None:
+    """Keep NetLogo from autosaving the model of a netlogopy session (event thread).
+
+    What a script does in the window (a slider moved, a widget added) makes
+    the model "modified" for NetLogo, which then autosaves it: next to the
+    model file (NetLogo 6) or in ``~/.nlogo`` (NetLogo 7).  The copy stays
+    when the script is killed, and NetLogo 7 later offers to recover it.  The
+    monitor of the changes is put in the state it has while a model loads, in
+    which NetLogo neither marks the model as modified nor autosaves it.
+    *File > Save* in the window still saves when the user asks for it.
+    """
+    monitor = app.dirtyMonitor()
+    for name, value in (("loading", True), ("_modelDirty", False)):
+        try:
+            _private_field(monitor, name).setBoolean(monitor, value)
+        except Exception:                  # another NetLogo: _close_gui still removes the autosaves
+            pass
+    try:
+        _private_field(monitor, "dirtyTimer").get(monitor).cancel()    # NetLogo 7: an autosave already due
+    except Exception:
+        pass
+
+
 def open_in_gui(app: Any, path: str) -> None:
-    """Open a model in the NetLogo window, answering NetLogo's conversion questions."""
+    """Open a model in the NetLogo window without a question and without touching its file.
+
+    NetLogo's question about widget sizes is answered (see
+    ``_OPEN_DIALOG_ANSWERS``).  NetLogo 7 has another one: when an autosave
+    newer than the model file exists, it asks "Recover Autosave", then saves
+    over the model file whatever the answer.  A script must neither wait for a
+    click nor change the model, so the autosaves are put aside while the model
+    opens and given back afterwards: they may be the user's own work, which
+    NetLogo itself will offer again.
+    """
+    folder = _autosave_folder(path)
     stop = threading.Event()
     watcher = threading.Thread(target=_answer_open_dialogs, args=(stop,),
                                name="netlogopy-dialogs", daemon=True)
     watcher.start()
+    _hold_autosaves(folder)
     try:
         run_on_edt(lambda: call_open(app, path))
+        run_on_edt(lambda: _no_autosave(app))
     finally:
+        _restore_autosaves(folder)
         stop.set()
         watcher.join(2)
+    try:
+        known = set(os.listdir(folder)) if folder and os.path.isdir(folder) else set()
+    except OSError:
+        known = set()
+    _gui["autosaves"] = (folder, known)    # what was there before this session
+
+
+def _window_closed_by_user() -> None:
+    """The user closed the NetLogo window: close the session and let Python go on."""
+    def close() -> None:
+        try:
+            for handle in list(_open_handles):
+                if handle.app is not None:
+                    handle.close_reason = "the NetLogo window was closed"
+                    handle.close()
+        finally:
+            detach_thread()
+
+    # Not on the event thread: closing waits for the session's background run.
+    threading.Thread(target=close, name="netlogopy-window-closed", daemon=True).start()
+
+
+def _take_over_closing(app: Any) -> None:
+    """Make the close button and *File > Quit* close the session (event thread).
+
+    NetLogo ends the Java process (``System.exit``) when its window closes,
+    and here that process is Python: the script stopped without a message.
+    NetLogo's own handlers are replaced by one that closes the netlogopy
+    session; the next call on it raises :class:`NetLogoError`.
+    """
+    import jpype
+
+    def class_name(java_object: Any) -> str:
+        return str(java_object.getClass().getName()) if hasattr(java_object, "getClass") else ""
+
+    def ignore(event: Any) -> None:
+        pass
+
+    def closing(event: Any) -> None:
+        _window_closed_by_user()
+
+    frame = app.frame()
+    for listener in list(frame.getWindowListeners()):
+        if class_name(listener).startswith("org.nlogo"):
+            frame.removeWindowListener(listener)
+    frame.setDefaultCloseOperation(0)      # DO_NOTHING_ON_CLOSE: the listener below decides
+    methods = {name: ignore for name in ("windowOpened", "windowClosed", "windowIconified",
+                                         "windowDeiconified", "windowActivated", "windowDeactivated")}
+    methods["windowClosing"] = closing
+    on_close = jpype.JProxy("java.awt.event.WindowListener", dict=methods)
+    frame.addWindowListener(on_close)
+
+    # File > Quit.  NetLogo makes a new menu item at every model it opens, so the
+    # item is taken over each time one is added to a menu.
+    on_quit = jpype.JProxy("java.awt.event.ActionListener", dict={"actionPerformed": closing})
+    menu_item = jpype.JClass("javax.swing.JMenuItem")
+    quit_text = _i18n("menu.file.quit", "Quit")
+
+    def take_over(item: Any) -> None:
+        if item is None or not isinstance(item, menu_item):
+            return
+        if "QuitAction" in class_name(item.getAction()) or str(item.getText()) == quit_text:
+            text, accelerator, mnemonic = item.getText(), item.getAccelerator(), item.getMnemonic()
+            for listener in list(item.getActionListeners()):
+                item.removeActionListener(listener)        # NetLogo's action goes, and the label with it
+            item.setText(text)
+            item.setAccelerator(accelerator)
+            item.setMnemonic(mnemonic)
+            item.setEnabled(True)
+            item.addActionListener(on_quit)
+
+    def added(event: Any) -> None:
+        try:
+            take_over(event.getChild())
+        except Exception:                  # never break NetLogo's menus
+            pass
+
+    on_added = jpype.JProxy("java.awt.event.ContainerListener",
+                            dict={"componentAdded": added, "componentRemoved": ignore})
+    _gui["listeners"] = [on_close, on_quit, on_added]      # kept alive with the window
+    bar = frame.getJMenuBar()
+    for index in range(bar.getMenuCount() if bar is not None else 0):
+        menu = bar.getMenu(index)
+        if menu is None:
+            continue
+        for position in range(menu.getItemCount()):
+            take_over(menu.getItem(position))
+        menu.getPopupMenu().addContainerListener(on_added)
 
 
 def launch_gui() -> Any:
@@ -545,10 +743,27 @@ def launch_gui() -> Any:
         if _jvm.get("headless"):
             raise NetLogoError("The JVM was started in headless mode (no display), so the "
                                "NetLogo window cannot be shown. Use gui=False.")
+        if platform.system() == "Linux" and not (os.environ.get("DISPLAY")
+                                                 or os.environ.get("WAYLAND_DISPLAY")):
+            raise NetLogoError("No display: the NetLogo window (gui=True) cannot be shown here. Use "
+                               "gui=False, or set NETLOGOPY_HEADLESS=1 to run a window script without it.")
         app_class = jpype.JClass("org.nlogo.app.App")
-        app_class.main(jpype.JArray(jpype.JString)([]))
-        app = app_class.app()
+        try:
+            # NetLogo 7 compiles on the event thread, which needs NetLogo's class
+            # loader: AWT may have been started by a thread that had none.
+            run_on_edt(ensure_context_class_loader)
+            app_class.main(jpype.JArray(jpype.JString)([]))
+            app = app_class.app()
+        except jpype.JException as exc:
+            raise NetLogoError(f"The NetLogo window could not be opened: {exc}") from exc
+        if app is None:
+            raise NetLogoError("The NetLogo window could not be opened: NetLogo reported an error "
+                               "while it started.")
         _gui["app"] = app
+        try:
+            run_on_edt(lambda: _take_over_closing(app))
+        except Exception:                  # NetLogo keeps its own handling of the close button
+            pass
         return app
 
 
@@ -603,6 +818,11 @@ def _close_gui(app: Any) -> None:
             step()
         except Exception:                  # e.g. NetLogo 6 has no dirtyMonitor nor JavaFX
             pass
+    folder, known = _gui.get("autosaves") or (None, set())
+    try:                                   # NetLogo 7: every autosave written since the model was opened
+        autosaves += [os.path.join(folder, name) for name in os.listdir(folder) if name not in known]
+    except (OSError, TypeError):
+        pass
     for path in autosaves:
         try:
             os.remove(path)
