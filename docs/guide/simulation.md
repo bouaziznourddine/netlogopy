@@ -45,8 +45,18 @@ steps = nl.stop()                    # number of steps made
 ```
 
 The run ends by itself after `max_steps`, when `until` becomes true, or when
-the model's `go` calls `stop`. Closing the session or opening another model
-stops it first.
+the model's `go` calls `stop` (in the NetLogo window a `stop` of the model is
+not seen: give `until` or `max_steps` there). Closing the session or opening
+another model stops it first.
+
+`stop()` waits for the step in progress. For a step that takes too long or
+never ends, `nl.halt()` interrupts NetLogo, like *Halt* in its Tools menu, and
+`nl.stop(timeout=5)` does it after five seconds. Called from another thread,
+`halt()` also interrupts a `command()` that does not return.
+
+While the model runs, each call is atomic: a list read with `nl.turtles()` or
+`nl.report(...)` is complete, and `create_turtles`, `hatch` and `sprout` return
+the turtles they created, not the ones the model created at the same time.
 
 ## Several models at once
 

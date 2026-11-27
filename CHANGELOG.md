@@ -2,6 +2,108 @@
 
 ## 1.0.1
 
+A release of corrections, after a review of the whole code. A script that
+worked with 1.0.0 gives the same results, except where 1.0.0 was wrong.
+
+### Fixed: data loss, hangs, a process that ends
+
+- **The NetLogo window no longer ends Python.** Closing the window, or
+  *File > Quit*, made NetLogo end the process: the script stopped without a
+  message. The session is closed instead; the next call raises `NetLogoError`.
+- **NetLogo 7 no longer writes over the model file.** When it found an autosave
+  newer than the model (left by a script that was killed), NetLogo 7 asked
+  "Recover Autosave" and then saved over the model, whatever the answer.
+  Nothing is asked any more, the model file is not written, and a session no
+  longer makes NetLogo autosave the model.
+- **NaN and infinite numbers are refused** when a variable is set
+  (`turtle.xcor = float("nan")`): they corrupted the turtle, and NetLogo never
+  returned when its pen was down. (Introduced in 1.0.0.)
+- **A background run can always be ended**: `halt()` interrupts the step in
+  progress, `stop(timeout=...)` does it after a delay, and `close()` and the
+  end of the script no longer wait for a step that never ends.
+- **`start("go")` ends when the model's `go` calls `stop`**, as documented
+  (headless sessions).
+
+### Fixed: wrong or misleading results
+
+- `nl.of(agents, ...)` gives its values in the order of a Python list, one per
+  agent (`None` for a dead agent): `zip(agents, values)` pairs them. It used
+  to sort them by who number and drop the duplicates.
+- Reading agents during a background run: no more `None` in the lists, no more
+  Java exception.
+- `create_turtles`, `hatch`, `sprout` and `create_link` return their own agents
+  during a background run, and leave no agent behind when they fail.
+- `nl.patch(x, y)` with whole numbers outside the world gives `None` (or the
+  patch it wraps to), like the other coordinates.
+- `nl.link(a, b)` without a breed finds links of any breed.
+- `collect(until=...)` stops at the step where the condition becomes true, not
+  at the next multiple of `every`; it refuses two columns of the same name.
+- `schedule_reporters()` no longer repeats its last row when `go` stops.
+- `n_of()` evaluated a random filter twice and could fail; `layout_circle()`
+  ignored the order of a list; `set_topology()` did not tell the view;
+  `set_current_directory()` was ignored by `file_open`, `file_delete` and
+  `file_exists`; `diffuse(neighbors=5)` silently used 8.
+- An empty Python list of agents is no longer an error; a `;` comment at the
+  end of NetLogo code no longer breaks the command; lists of thousands of
+  agents compile; `set_patch_grid()` accepts agents.
+- Agents of another session are refused instead of designating other agents.
+- `turtle.set(value=5)` sets the variable `value` (the keyword was taken for a
+  parameter); a model variable spelled like an alias (`hidden`, `label_color`)
+  is that variable; `turtle.breed = "wolves"` works.
+- In the window, code compiled before the user edited the model is no longer
+  reused.
+
+### Fixed: experiments
+
+- `parameter_grid()` and `run_experiment()` take a numpy array, a range or any
+  collection as the values to try (an array was one value: one run instead of
+  several).
+- A typo in a reporter, `until`, `setup` or `go` is reported before the first
+  run; the first run that fails ends the sweep, and the error names the run.
+- In an explicit list of runs, a run no longer inherits the globals set by the
+  previous run of the same worker.
+- `until` is tested before the first step; `every`, `steps` and `repetitions`
+  are checked.
+
+### Fixed: scripts written for 0.x
+
+- `car.fd(steps=2)`, `car.bk(steps=1)` and `car.move_to(target=other)` work
+  again.
+- `pyturtle(fields={"color": ...})`: a field named like a `Turtle` attribute
+  no longer breaks the object (it is read through `car.fields[...]`).
+- `list_pyturtle` and `list_street` follow a `setup`, a street asked twice,
+  several sessions and `clear_all_turtles`.
+- `set_background("image.png")` finds an image of the current folder;
+  `de_copy()` copies a pyturtle.
+
+### Fixed: installation and window
+
+- A wrong model path with `gui=True` is reported before the window opens (the
+  process could no longer open a window afterwards).
+- NetLogo is found from a folder above or inside its installation; a release
+  is preferred to its pre-releases; an installation folder with accents keeps
+  its extensions.
+- `jvm_args` and `java_home` given when the Java VM already runs produce a
+  warning instead of being ignored silently.
+- A widget named like a breed, a procedure or a primitive is refused (the
+  model no longer compiled); so is a button or a monitor whose code does not
+  compile.
+- Sessions dropped without `close()`, background runs and `run_experiment`
+  workers no longer leave Java threads or workspaces behind.
+
+### Added
+
+- `nl.halt()` and `nl.stop(timeout=...)`.
+- `error.context` on `NetLogoRuntimeError`: the agent, the primitive and the
+  procedures that NetLogo names for a runtime error.
+- Tests of the NetLogo window in continuous integration; Python 3.8 and 3.14.
+
+### Changed
+
+- `nl.globals["unknown"]` raises `KeyError`, as a dict does (it raised
+  `NetLogoCompileError`).
+- `link.other_end(turtle)` raises `ValueError` for a turtle that is not an end
+  of the link (it returned an end).
 - The package is credited to "The netlogopy developers".
 - The package description on PyPI no longer says that 1.0 is not published.
 

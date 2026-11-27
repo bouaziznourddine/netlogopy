@@ -10,7 +10,7 @@ and docstrings.
 | Session | `NetLogo(model=None, gui=False, netlogo_home=None, java_home=None, jvm_args=(), setup=False)`, `open_model`, `close` / `close_model`, `closed`, `gui`, `model_path`, `netlogo_version` |
 | Code | `command(*commands)`, `report(reporter or list)`, `report_java` |
 | Simulation | `setup`, `go(times)`, `run_until(condition, max_steps)`, `collect(...)`, `schedule_reporters(...)` |
-| Background run | `start(command, interval, max_steps, until)`, `pause`, `resume`, `stop`, `wait(timeout)`, `running`, `paused`, `steps_run` |
+| Background run | `start(command, interval, max_steps, until)`, `pause`, `resume`, `stop(timeout)`, `halt`, `wait(timeout)`, `running`, `paused`, `steps_run` |
 | Ticks | `ticks`, `tick`, `tick_advance`, `reset_ticks`, `clear_ticks` |
 | Globals | `globals[...]`, `get_global`, `set_global`, `global_names` |
 | World | `min_pxcor`, `max_pxcor`, `min_pycor`, `max_pycor`, `world_width`, `world_height`, `resize_world`, `patch_size`, `set_patch_size`, `wrap_x`, `wrap_y`, `set_topology`, `random_seed`, `new_seed`, `clear_all`, `clear_turtles`, `clear_patches`, `clear_links`, `clear_globals`, `clear_drawing`, `display`, `no_display` |

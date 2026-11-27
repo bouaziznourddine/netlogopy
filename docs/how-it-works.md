@@ -27,8 +27,12 @@ converted from Java to Python values (numbers, strings, lists, agents).
   support; netlogopy then uses `JAVA_HOME`, the conda environment or another
   NetLogo's runtime.
 - **NetLogo 7**: one model per headless workspace (a new workspace for each
-  `open_model`), the `.nlogox` format, the widget-resize dialog answered, and
-  NetLogo's autosave discarded when the window closes.
+  `open_model`), the `.nlogox` format and the widget-resize dialog answered.
+- **The model file**: NetLogo does not autosave the model of a session, and its
+  "Recover Autosave" question never comes up: the model file is not written
+  unless you save it in the window.
+- **Closing the window**: NetLogo would end the process (and Python with it);
+  the session is closed instead and the script goes on.
 - **Errors in the window**: commands run in the window are wrapped so that a
   runtime error comes back to Python as `NetLogoRuntimeError` instead of a
   NetLogo dialog.

@@ -57,7 +57,8 @@ nl.layout_circle("turtles", 20)
 nl.layout_spring("turtles", "links", spring_constant=0.2, spring_length=6,
                  repulsion_constant=2, iterations=50)
 nl.layout_radial("turtles", "links", root)
-nl.layout_tutte(fixed, "links", 15)
+nl.layout_tutte(inner, "links", 15)      # inner turtles go to the centre of their neighbours;
+                                         # the other turtles are spread on the circle
 ```
 
 ## Colors

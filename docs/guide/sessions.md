@@ -19,6 +19,10 @@ with NetLogo("model.nlogo") as nl:               # closed at the end of the bloc
 - One NetLogo window per process, and any number of headless sessions. Each
   session can be used from its own thread.
 - Closing a session in the window closes the window without saving the model.
+- Closing the window by hand, or *File > Quit*, closes the session: the next
+  call raises `NetLogoError`, and the Python script goes on.
+- A session never writes the model file, and NetLogo does not autosave the
+  model of a session; *File > Save* in the window saves it when you ask.
 - `NETLOGOPY_HEADLESS=1` turns every window off.
 - NetLogo 7 asks to resize the widgets of models saved by NetLogo 6 when it
   opens them in its window; netlogopy answers "Resize and adjust positions".
@@ -68,6 +72,8 @@ try:
 except NetLogoRuntimeError as error:
     print(error.message)     # ASK expected input to be an agent ... but got NOBODY
     print(error.source)      # ask turtle 999 [ fd 1 ]
+    print(error.context)     # error while observer running ASK (the agent, the primitive,
+                             # the calling procedures; None when NetLogo gives none)
 ```
 
 `NetLogoCompileError` is raised for code that does not compile (syntax error,

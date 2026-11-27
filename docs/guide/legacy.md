@@ -39,7 +39,7 @@ set_slider(n, "speed", 5)
 | `pyturtle(n, x, y, shape, size_shape, color, name, labelcolor, fields)` | a Python-driven turtle: `fd`, `bk`, `rt`, `lt`, `setxy`, `move_to`, `face_to`, `set_heading`, `get_xy`, `distanceto`, `set_color`, `set_shape`, `set_size`, `set_label`, `hideturtle`, `showturtle`, `dieturtle`, `pen_down`, `pen_up`, `stamp`, `in_radius`, `turtles_here`... |
 | `street(n, fromm, too, label, labelcolor, color, shape, thickness)` | a directed link between two pyturtles |
 | `PyTurtle`, `Street` | CamelCase names of `pyturtle` and `street` |
-| `car.fields` | the extra attributes given with `fields=`, as a live dict (`car.fields["busy"]` is `car.busy`) |
+| `car.fields` | the extra attributes given with `fields=`, as a live dict (`car.fields["busy"]` is `car.busy`). A field named like a `Turtle` attribute (`color`, `size`, `distance`...) is read through `car.fields[...]` only |
 
 ## What changed in 1.0
 

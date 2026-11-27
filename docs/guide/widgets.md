@@ -49,7 +49,10 @@ with NetLogo(gui=True, setup=True) as nl:
 - Widgets go in a column to the right of the model's own widgets, unless `x=`
   and `y=` are given (`width=` and `height=` too).
 - The model keeps its agents and ticks when a widget is added.
-- A name that is already a global, or a second output area, raises an error.
+- A name that is already a global, a breed, a procedure or a primitive, or a
+  second output area, raises an error; so does a button or a monitor whose
+  code does not compile. Nothing is added then.
+- A slider starts at 50, or at its minimum when 50 is outside its bounds.
 - The widgets last for the session: File > Save As in NetLogo keeps them in a
   model.
 - They need the window: in a headless session, `add_...` raises `NetLogoError`.
