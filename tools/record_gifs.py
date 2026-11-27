@@ -20,6 +20,7 @@ Needs NetLogo, JPype and Pillow.
 
 import os
 import runpy
+import shutil
 import sys
 import tempfile
 import threading
@@ -179,7 +180,10 @@ def record(name, script, capture, every, width):
         os.chdir(cwd)
         core.NetLogo.__init__, core.NetLogo.close, time.sleep = original_init, original_close, original_sleep
         core.NetLogo.go, core.NetLogo.tick = original_go, original_tick
-    return assemble(name, recorder.frames, width)
+    try:
+        return assemble(name, recorder.frames, width)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)       # hundreds of frames per example
 
 
 def assemble(name, frames, width):

@@ -14,7 +14,7 @@ end up in a strongly segregated city.
 The NetLogo model is written by Python (the bundled model with its Code tab
 replaced).
 """
-import os, sys, tempfile, time
+import atexit, os, shutil, sys, tempfile, time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from netlogopy import BUNDLED_MODEL, NetLogo
 
@@ -61,7 +61,9 @@ end
 def write_model():
     with open(BUNDLED_MODEL, encoding="utf-8") as source:
         widgets = source.read().split("@#$#@#$#@", 1)[1]
-    path = os.path.join(tempfile.mkdtemp(), "segregation.nlogo")
+    folder = tempfile.mkdtemp()
+    atexit.register(shutil.rmtree, folder, ignore_errors=True)     # removed when the script ends
+    path = os.path.join(folder, "segregation.nlogo")
     with open(path, "w", encoding="utf-8") as model:
         model.write(MODEL_CODE + "@#$#@#$#@" + widgets)
     return path

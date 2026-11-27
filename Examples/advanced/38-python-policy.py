@@ -14,7 +14,7 @@ Any Python code can take the decision: a heuristic as here, an optimiser, or
 a trained model.  The NetLogo model itself is written by Python: the
 bundled model with its Code tab replaced.
 """
-import os, random, sys, tempfile, time
+import atexit, os, random, shutil, sys, tempfile, time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from netlogopy import BUNDLED_MODEL, Code, NetLogo, colors
 
@@ -54,7 +54,9 @@ def write_model():
     """The bundled model (view, plot, widgets) with MODEL_CODE as its Code tab."""
     with open(BUNDLED_MODEL, encoding="utf-8") as source:
         widgets = source.read().split("@#$#@#$#@", 1)[1]
-    path = os.path.join(tempfile.mkdtemp(), "epidemic.nlogo")
+    folder = tempfile.mkdtemp()
+    atexit.register(shutil.rmtree, folder, ignore_errors=True)     # removed when the script ends
+    path = os.path.join(folder, "epidemic.nlogo")
     with open(path, "w", encoding="utf-8") as model:
         model.write(MODEL_CODE + "@#$#@#$#@" + widgets)
     return path
