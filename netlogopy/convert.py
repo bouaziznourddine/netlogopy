@@ -105,8 +105,19 @@ def to_netlogo(value: Any) -> str:
             return "[]"
         if all(_is_literal(item) for item in items):
             return "[" + " ".join(to_netlogo(item) for item in items) + "]"
-        return "(list " + " ".join(to_netlogo(item) for item in items) + ")"
+        codes = [to_netlogo(item) for item in items]
+        if len(codes) <= _PIECE:
+            return "(list " + " ".join(codes) + ")"
+        # NetLogo compiles a list expression into one Java method, which has a
+        # maximum size: a long list is built in pieces, each by its own reporter,
+        # and `sentence` joins the pieces (the items themselves are not flattened).
+        pieces = ["(runresult [ -> (list " + " ".join(codes[start:start + _PIECE]) + ") ])"
+                  for start in range(0, len(codes), _PIECE)]
+        return "(sentence " + " ".join(pieces) + ")"
     raise TypeError(f"Cannot convert {type(value).__name__} to a NetLogo value")
+
+
+_PIECE = 200        # expressions per piece of a long list (agents, NetLogo code: not plain values)
 
 
 def _is_iterable(value: Any) -> bool:

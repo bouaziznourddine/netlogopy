@@ -569,8 +569,9 @@ def test_options_asked_of_a_java_vm_that_already_runs(nl):
 
 def test_netlogo_folders_are_given_to_the_java_vm_as_they_are(nl):
     import jpype
-    folder = jpype.JClass("java.lang.System").getProperty("netlogo.extensions.dir")
-    assert folder is not None and os.path.isdir(str(folder))
+    system = jpype.JClass("java.lang.System")
+    folders = [system.getProperty(name) for name in ("netlogo.extensions.dir", "netlogo.models.dir")]
+    assert all(folder is None or os.path.isdir(str(folder)) for folder in folders)      # not garbled
 
 
 # ─── a model that stops ──────────────────────────────────────────────────────────
@@ -602,3 +603,13 @@ def test_a_step_reports_that_the_model_stopped(nl, monkeypatch):
     assert nl._step("tick") is False and nl.ticks == 2             # it runs the step, and hides a stop
     with pytest.raises(NetLogoRuntimeError, match="NOBODY"):
         nl._step("ask turtle 999 [ fd 1 ]")
+
+
+def test_a_long_list_of_agents_as_a_value(nl):
+    turtles = nl.create_turtles(3000)              # one expression per agent: too many for one command before
+    assert nl.report(f"length {to_netlogo(turtles)}") == 3000
+    assert nl.report(f"first {to_netlogo(turtles)}") == turtles[0]
+    assert nl.report(f"last {to_netlogo(turtles + [[1, 2]])}") == [1.0, 2.0]       # items are not flattened
+    turtles[0].label = turtles[:450]
+    assert turtles[0].label == turtles[:450]
+    assert to_netlogo(turtles[:3]) == "(list (turtle 0) (turtle 1) (turtle 2))"     # short lists as before
