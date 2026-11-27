@@ -28,25 +28,39 @@ OPEN = """
     from netlogopy import NetLogo, NetLogoError, _java
     model = sys.argv[1]
     dialogs = []
+    watching = threading.Event()
+    watching.set()
 
     def watch():                                   # any dialog NetLogo shows is a failure
         while _java._gui["app"] is None:           # AWT must be started by NetLogo, not by this thread
             time.sleep(0.05)
         window_class = jpype.JClass("java.awt.Window")
         dialog_class = jpype.JClass("java.awt.Dialog")
-        while True:
-            for window in window_class.getWindows():
-                if isinstance(window, dialog_class) and window.isVisible():
-                    title = str(window.getTitle() or "")
-                    if title and title not in dialogs:         # NetLogo 6's loading panel has no title
-                        dialogs.append(title)
-                        print("DIALOG", title, flush=True)
-            time.sleep(0.1)
+        try:
+            while watching.is_set():
+                for window in window_class.getWindows():
+                    if isinstance(window, dialog_class) and window.isVisible():
+                        title = str(window.getTitle() or "")
+                        if title and title not in dialogs:     # NetLogo 6's loading panel has no title
+                            dialogs.append(title)
+                            print("DIALOG", title, flush=True)
+                time.sleep(0.1)
+        finally:
+            _java.detach_thread()
 
-    threading.Thread(target=watch, daemon=True).start()
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
     nl = NetLogo(model, gui=True)
     folder, known = _java._gui["autosaves"]
     print("FOLDER", folder or "", flush=True)
+"""
+
+
+# What every child ends with.  A thread that still calls Java when Python exits is
+# killed inside the Java bridge, which aborts the process on Linux: stop it first.
+END = """
+    watching.clear()
+    watcher.join(10)
 """
 
 
@@ -54,7 +68,7 @@ def run_child(code, model, *arguments, timeout=180):
     """Run a scenario in its own Python process and return what it printed, by keyword."""
     env = dict(os.environ, PYTHONPATH=ROOT)
     env.pop("NETLOGOPY_HEADLESS", None)
-    script = textwrap.dedent(OPEN) + textwrap.dedent(code)
+    script = textwrap.dedent(OPEN) + textwrap.dedent(code) + textwrap.dedent(END)
     result = subprocess.run([sys.executable, "-c", script, str(model), *arguments],
                             capture_output=True, text=True, timeout=timeout, env=env)
     lines = {}
@@ -107,6 +121,10 @@ CLOSE_BY_HAND = """
     except NetLogoError as error:
         print("ANSWER", str(error).splitlines()[0], flush=True)
     print("ALIVE yes", flush=True)
+    if sys.argv[2] == "button":
+        nl.close()                                 # nothing left to close: waits for the closing in progress
+        print("ENDED", len(_java._open_handles), flush=True)
+    # "quit": the script ends here, while the session is still closing in another thread
 """
 
 
@@ -115,7 +133,8 @@ def test_closing_the_window_closes_the_session_and_not_python(model, how):
     result, lines = run_child(CLOSE_BY_HAND, model, how)
     assert lines.get("CLOSED") == ["True"], result.stdout + result.stderr
     assert lines["ANSWER"] == ["this NetLogo session is closed: the NetLogo window was closed"]
-    assert lines["ALIVE"] == ["yes"] and result.returncode == 0
+    assert lines["ALIVE"] == ["yes"] and lines.get("ENDED", ["0"]) == ["0"]     # fully closed by then
+    assert result.returncode == 0, result.stderr[-2000:]           # and Python ends cleanly
     assert "DIALOG" not in lines
 
 

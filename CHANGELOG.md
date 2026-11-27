@@ -1,6 +1,18 @@
 # Changelog
 
+## 1.0.2
+
+The version published on PyPI after 1.0.0: the corrections of 1.0.1 below,
+and this one.
+
+- A script that ended while a NetLogo window closed by hand was still closing
+  could abort on Linux ("FATAL: exception not rethrown"). The end of the
+  script now waits for the closing to finish.
+
 ## 1.0.1
+
+Tagged on GitHub but not published on PyPI: its last check before the upload
+found the defect that 1.0.2 fixes.
 
 A release of corrections, after a review of the whole code. A script that
 worked with 1.0.0 gives the same results, except where 1.0.0 was wrong.

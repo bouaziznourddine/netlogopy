@@ -22,7 +22,7 @@ describes it (checked in November 2026).
 | Interface widgets from Python | add buttons, sliders, plots..., press buttons | no |
 | Results | Python values (lists, agents), pandas optional | Python values, NumPy arrays, pandas DataFrames |
 | License | MIT | BSD-3-Clause |
-| Latest release | 1.0.0 | 0.5.2 (February 2024) |
+| Latest release | 1.0.2 | 0.5.2 (February 2024) |
 
 ## How NetLogo is run
 

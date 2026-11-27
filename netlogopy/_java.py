@@ -456,14 +456,18 @@ class WorkspaceHandle:
         self.closed = False
         self.close_reason: Optional[str] = None    # why, when it was not the session's close()
         self._close_lock = threading.Lock()
+        self._close_done = threading.Event()
         with _lock:
             _open_handles.append(self)
 
     def close(self) -> None:
         with self._close_lock:
-            if self.closed:
-                return
-            self.closed = True
+            first, self.closed = not self.closed, True
+        if not first:
+            # Another thread is closing it (the window closed by hand): let it
+            # finish, so that the end of the script does not cut it short.
+            self._close_done.wait(15)
+            return
         try:
             session = self.owner() if self.owner is not None else None
             if session is not None:
@@ -486,11 +490,18 @@ class WorkspaceHandle:
             with _lock:
                 if self in _open_handles:
                     _open_handles.remove(self)
+            self._close_done.set()
 
 
 def _shutdown() -> None:
     for handle in list(_open_handles):
         handle.close()
+    # A thread that is still calling Java when Python exits is killed inside the
+    # Java bridge, which aborts the process on Linux: let the closing of a
+    # window closed by hand come to its end first.
+    closer = _gui.get("closer")
+    if closer is not None and closer is not threading.current_thread():
+        closer.join(20)
     if _gui["app"] is None:
         return
     deadline = time.monotonic() + 3        # AWT needs a moment to stop its threads
@@ -729,7 +740,9 @@ def _window_closed_by_user() -> None:
             detach_thread()
 
     # Not on the event thread: closing waits for the session's background run.
-    threading.Thread(target=close, name="netlogopy-window-closed", daemon=True).start()
+    closer = threading.Thread(target=close, name="netlogopy-window-closed", daemon=True)
+    _gui["closer"] = closer                # the end of the script waits for it, see _shutdown()
+    closer.start()
 
 
 def _take_over_closing(app: Any) -> None:
@@ -902,7 +915,14 @@ def _close_gui(app: Any) -> None:
         for window in jpype.JClass("java.awt.Window").getWindows():
             window.dispose()
 
+    def forget_listener() -> None:
+        # Once the window is closed, Java's event thread must not call Python any
+        # more: such a call while Python exits aborts the process on Linux.
+        for listener in _gui.get("listeners", [])[:1]:
+            app.frame().removeWindowListener(listener)
+
     for step in (lambda: run_on_edt(forget_changes) if hasattr(app, "dirtyMonitor") else None,
+                 lambda: run_on_edt(forget_listener),
                  lambda: run_on_edt(app.frame().dispose),
                  lambda: app.workspace().dispose(),
                  lambda: run_on_edt(dispose_windows),

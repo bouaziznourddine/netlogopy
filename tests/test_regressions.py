@@ -1,4 +1,4 @@
-"""Defects fixed in 1.0.1, each pinned by a test against a real NetLogo (headless)."""
+"""Defects fixed after 1.0.0, each pinned by a test against a real NetLogo (headless)."""
 
 import copy
 import gc
