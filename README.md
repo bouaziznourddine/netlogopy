@@ -65,12 +65,6 @@ How it compares with pynetlogo: [Why netlogopy](https://bouaziznourddine.github.
 pip install netlogopy
 ```
 
-Version 1.0 is not on PyPI yet; until it is, install it from GitHub:
-
-```bash
-pip install git+https://github.com/bouaziznourddine/netlogopy
-```
-
 Add `[data]` for pandas and numpy (`pip install "netlogopy[data]"`). You also
 need [NetLogo](https://ccl.northwestern.edu/netlogo/download.shtml) 6.x or
 7.x. netlogopy finds it by itself (`NETLOGO_HOME`, or the usual install
