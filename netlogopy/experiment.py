@@ -60,7 +60,7 @@ def run_experiment(model: PathLike, parameters: Parameters = None,
                    reporters: Union[str, Sequence[str], Mapping[str, str]] = "count turtles", *,
                    steps: int = 100, repetitions: int = 1, setup: str = "setup", go: str = "go",
                    every: Optional[int] = None, until: Optional[str] = None,
-                   seed: Optional[int] = None, workers: int = 1,
+                   final: Optional[str] = None, seed: Optional[int] = None, workers: int = 1,
                    netlogo_home: Optional[PathLike] = None, java_home: Optional[PathLike] = None,
                    jvm_args: Sequence[str] = (), as_dataframe: bool = False,
                    progress: Optional[Callable[[int, int], None]] = None) -> Any:
@@ -88,7 +88,10 @@ def run_experiment(model: PathLike, parameters: Parameters = None,
         records only the final values.
     until : str, optional
         NetLogo condition that ends a run early (e.g. ``"not any? turtles"``),
-        tested before each step.
+        tested before each step.  A run also ends when the ``go`` procedure
+        of the model calls ``stop``, as in BehaviorSpace.
+    final : str, optional
+        NetLogo commands run at the end of each run, after the last record.
     seed : int, optional
         Runs use ``random-seed seed + run - 1`` for reproducible results.
     workers : int, default 1
@@ -199,24 +202,24 @@ def run_experiment(model: PathLike, parameters: Parameters = None,
             rows: List[Dict[str, Any]] = []
 
             def record(step: int) -> None:
-                rows.append({**base, "step": step, **dict(zip(names, nl.report(exprs)))})
+                rows.append({**base, "step": step, **dict(zip(names, nl.observe(exprs)))})
 
             if every:
                 record(0)
-            chunk_size = 1 if until else (every or max(1, steps))
             done = 0
-            finished = bool(until) and bool(nl.report(until))
+            finished = bool(until) and bool(nl.observe(until))
             while done < steps and not finished:
                 if failed.is_set():
                     raise _Cancelled()
-                chunk = min(chunk_size, steps - done)
-                nl.go(chunk, go)
-                done += chunk
-                finished = bool(until) and bool(nl.report(until))
+                stopped = nl._step(go)             # True when the go procedure called stop
+                done += 1
+                finished = stopped or (bool(until) and bool(nl.observe(until)))
                 if every and (done % every == 0 or done == steps or finished):
                     record(done)
             if not every:
                 record(done)
+            if final:
+                nl.command(final)
             return rows
         except NetLogoError as exc:        # say which run it was
             where = f"run {run_id}, repetition {repetition + 1}, parameters {combination}"
@@ -229,7 +232,7 @@ def run_experiment(model: PathLike, parameters: Parameters = None,
             first = open_session()
             spare.append(first)
             for code, is_reporter in [(expr, True) for expr in exprs + ([until] if until else [])] + \
-                                     [(setup, False), (go, False)]:
+                                     [(setup, False), (go, False)] + ([(final, False)] if final else []):
                 first._compile(code, reporter=is_reporter)
         threads = min(int(workers), len(tasks))
         if threads <= 1:

@@ -14,8 +14,10 @@ available from ``netlogopy`` and ``netlogopy.netlogopy``.
 from . import colors
 from ._java import find_netlogo_home, jvm_info, netlogo_version
 from .agents import Agent, Link, Patch, Turtle
+from .behaviorspace import behaviorspace_experiments, run_behaviorspace
 from .convert import Code, to_netlogo
 from .core import BUNDLED_MODEL, BUNDLED_MODEL_NLOGOX, Globals, NetLogo, bundled_model
+from .design import calibrate, latin_hypercube, random_sample, sensitivity
 from .errors import NetLogoCompileError, NetLogoError, NetLogoNotFoundError, NetLogoRuntimeError
 from .experiment import parameter_grid, run_experiment
 from .netlogopy import (
@@ -100,6 +102,8 @@ __all__ = [
     # new API
     "NetLogo", "Globals", "Agent", "Turtle", "Patch", "Link", "Code", "to_netlogo",
     "run_experiment", "parameter_grid", "colors",
+    "behaviorspace_experiments", "run_behaviorspace",
+    "latin_hypercube", "random_sample", "sensitivity", "calibrate",
     "NetLogoError", "NetLogoNotFoundError", "NetLogoCompileError", "NetLogoRuntimeError",
     "find_netlogo_home", "netlogo_version", "jvm_info",
     "BUNDLED_MODEL", "BUNDLED_MODEL_NLOGOX", "bundled_model",
@@ -122,5 +126,5 @@ __all__ = [
     "turtle", "pyturtle", "street", "PyTurtle", "Street",
 ]
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 __author__  = "The netlogopy developers"

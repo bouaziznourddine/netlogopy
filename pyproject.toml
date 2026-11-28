@@ -36,6 +36,10 @@ classifiers = [
 
 [project.optional-dependencies]
 data = ["numpy", "pandas"]
+analysis = ["numpy", "pandas", "SALib"]
+rl = ["numpy", "gymnasium"]
+images = ["numpy", "pillow"]
+all = ["numpy", "pandas", "SALib", "gymnasium", "pillow"]
 test = ["pytest>=6"]
 
 [project.urls]

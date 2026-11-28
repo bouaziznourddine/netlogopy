@@ -11,6 +11,7 @@ primitive stays reachable through :meth:`NetLogo.command` and
 :meth:`NetLogo.report`; the other methods are typed shortcuts for them.
 """
 
+import contextlib
 import math
 import os
 import threading
@@ -273,6 +274,7 @@ class NetLogo(WidgetsMixin):
         self._lock = threading.RLock()
         self._cache: "OrderedDict[Tuple[bool, str], Any]" = OrderedDict()
         self._owner: Any = None
+        self._observer: Any = None
         self._patch_class: Any = None
         self._singulars: Dict[str, str] = {}
         self._alias_clash: Dict[str, bool] = {}    # alias -> the model has a variable spelled so
@@ -351,6 +353,7 @@ class NetLogo(WidgetsMixin):
             self._singulars.clear()
             self._alias_clash.clear()
             self._owner = None
+            self._observer = None
             self._directory = None
             self._widget_column = None             # where add_button() and the others put widgets
             self._procedures_id = self._procedures_identity()
@@ -619,7 +622,7 @@ class NetLogo(WidgetsMixin):
                 self._ws.requestDisplayUpdate(False)
             return True
 
-    def report(self, reporter: Union[str, Sequence[str]]) -> Any:
+    def report(self, reporter: Union[str, Sequence[str]], *, observe: bool = False) -> Any:
         """Evaluate a NetLogo reporter and return its value converted to Python.
 
         Parameters
@@ -627,6 +630,10 @@ class NetLogo(WidgetsMixin):
         reporter : str or sequence of str
             A NetLogo reporter, or a list of reporters evaluated in a single
             NetLogo call.
+        observe : bool, default False
+            Evaluate with NetLogo's auxiliary random generator, the one of its
+            monitors, so that reading a value never changes what the model
+            does next (see :meth:`observe`).
 
         Returns
         -------
@@ -658,18 +665,36 @@ class NetLogo(WidgetsMixin):
                 return []
             source = "(list " + " ".join(f"({_c(r)})" for r in reporters) + ")"
         with self._lock:                           # converted before a background run changes the agents
-            result = self.report_java(source)
+            result = self.report_java(source, observe=observe)
             try:
                 return from_java(result, self)
             except self._java_exception as exc:
                 raise _error_from_java(exc, source) from None
 
-    def report_java(self, reporter: str) -> Any:
+    def observe(self, reporter: Union[str, Sequence[str]]) -> Any:
+        """Evaluate a reporter without changing the course of the model.
+
+        A reporter such as ``[energy] of sheep`` or ``one-of turtles`` draws
+        random numbers: with :meth:`report` those come from the generator of
+        the model, so a seeded run then continues differently.  ``observe``
+        takes them from NetLogo's auxiliary generator, as a monitor of the
+        interface does.  :meth:`collect`, :meth:`run_until` and
+        :func:`~netlogopy.run_experiment` read their reporters this way.
+
+        Examples
+        --------
+        >>> nl.random_seed(1); nl.setup()
+        >>> nl.observe("[energy] of sheep")      # the run goes on as if nothing was read
+        """
+        return self.report(reporter, observe=True)
+
+    def report_java(self, reporter: str, *, observe: bool = False) -> Any:
         """Like :meth:`report` but return the raw Java object."""
         with self._lock:
             procedure = self._compile(reporter, reporter=True)
             try:
-                result = self._ws.runCompiledReporter(self._job_owner(), procedure)
+                owner = self._observer_owner() if observe else self._job_owner()
+                result = self._ws.runCompiledReporter(owner, procedure)
             except self._java_exception as exc:
                 raise _error_from_java(exc, reporter) from None
             self._raise_logo_exception(reporter)
@@ -718,6 +743,15 @@ class NetLogo(WidgetsMixin):
                 self._owner = owner_class("netlogopy", self._ws.world().mainRNG(), kind)
         return self._owner
 
+    def _observer_owner(self) -> Any:
+        """A job owner that draws from the auxiliary generator, like NetLogo's monitors."""
+        if self._observer is None:
+            import jpype
+            owner_class = jpype.JClass("org.nlogo.api.SimpleJobOwner")
+            kind = jpype.JClass("org.nlogo.core.AgentKindJ").Observer()
+            self._observer = owner_class("netlogopy-observe", self._ws.world().auxRNG(), kind)
+        return self._observer
+
     def _raise_logo_exception(self, source: str) -> None:
         try:
             exc = self._ws.lastLogoException()
@@ -763,7 +797,7 @@ class NetLogo(WidgetsMixin):
             The number of times ``command`` ran.
         """
         steps = 0
-        while (max_steps is None or steps < max_steps) and not self.report(condition):
+        while (max_steps is None or steps < max_steps) and not self.observe(condition):
             self.command(command)
             steps += 1
         return steps
@@ -824,7 +858,7 @@ class NetLogo(WidgetsMixin):
 
         def record(step: int) -> None:
             columns["step"].append(step)
-            for name, value in zip(names, self.report(exprs)):
+            for name, value in zip(names, self.observe(exprs)):
                 columns[name].append(value)
 
         if include_initial:
@@ -838,7 +872,7 @@ class NetLogo(WidgetsMixin):
                 done = target
             else:
                 while done < target:
-                    if self.report(until):
+                    if self.observe(until):
                         stopped = True
                         break
                     self.command(command)
@@ -847,6 +881,158 @@ class NetLogo(WidgetsMixin):
                 record(done)
                 last = done
         return _table(columns, as_dataframe)
+
+    # Columns that identify an agent in agent_table() and collect_agents().
+    _AGENT_KEYS = {"turtle": ("who",), "patch": ("pxcor", "pycor"), "link": ("end1", "end2")}
+
+    def agent_table(self, agents: Agents = "turtles",
+                    variables: Union[str, Sequence[str], Mapping[str, str]] = ("xcor", "ycor"), *,
+                    as_dataframe: bool = False) -> Any:
+        """Several variables of many agents, read in one NetLogo call.
+
+        Parameters
+        ----------
+        agents : str, agent or list of agents, default "turtles"
+            NetLogo code (``"sheep with [energy > 5]"``), or agents.
+        variables : str, sequence of str or mapping
+            Variables or reporters run by each agent, or ``{column: reporter}``.
+        as_dataframe : bool, default False
+            Return a pandas DataFrame instead of a dict of columns.
+
+        Returns
+        -------
+        dict or pandas.DataFrame
+            One row per agent: ``who`` for turtles, ``pxcor`` and ``pycor``
+            for patches, ``end1`` and ``end2`` (who numbers) for links, then
+            one column per variable.  Reading does not change the course of
+            the model (see :meth:`observe`).
+
+        Examples
+        --------
+        >>> nl.agent_table("sheep", ["xcor", "ycor", "energy"])
+        {'who': [0, 1, ...], 'xcor': [...], 'ycor': [...], 'energy': [...]}
+        """
+        names, exprs = _named_reporters(variables)
+        if as_dataframe:
+            _require_pandas()
+        columns, _ = self._agent_rows(agents, names, exprs)
+        return _table(columns, as_dataframe)
+
+    def _agent_rows(self, agents: Agents, names: List[str], exprs: List[str],
+                    ) -> Tuple[Dict[str, list], int]:
+        """The columns of agent_table() and the number of agents."""
+        if len(set(names)) != len(names):
+            raise ValueError("two variables have the same name: name the columns with a dict")
+        agents = _agents(agents)
+        values = " ".join(f"({_c(expr)})" for expr in exprs)
+        if isinstance(agents, str):
+            source = f"sort ({_c(agents)})"
+        elif not agents:
+            return {name: [] for name in names}, 0
+        else:
+            _same_session(agents, self)
+            source = "(list " + " ".join(agent.to_netlogo() for agent in agents) + ")"
+        rows = self.observe(f"map [ __a -> [ (list self {values}) ] of __a ] "
+                            f"filter [ __a -> __a != nobody ] {source}")
+        if not rows:
+            return {name: [] for name in names}, 0
+        kinds = {row[0].kind for row in rows}
+        keys = self._AGENT_KEYS[kinds.pop()] if len(kinds) == 1 else ("agent",)
+        clash = sorted(set(keys) & set(names))
+        if clash:
+            raise ValueError(f"{', '.join(clash)}: the table already has a column of that name, "
+                             "give the variable another name with a dict")
+        columns: Dict[str, list] = {key: [] for key in keys}
+        columns.update((name, []) for name in names)
+        for row in rows:
+            agent = row[0]
+            if keys == ("who",):
+                columns["who"].append(agent.who)
+            elif keys == ("pxcor", "pycor"):
+                columns["pxcor"].append(agent.pxcor)
+                columns["pycor"].append(agent.pycor)
+            elif keys == ("end1", "end2"):
+                columns["end1"].append(agent.end1_who)
+                columns["end2"].append(agent.end2_who)
+            else:
+                columns["agent"].append(agent)
+            for name, value in zip(names, row[1:]):
+                columns[name].append(value)
+        return columns, len(rows)
+
+    def collect_agents(self, agents: Agents,
+                       variables: Union[str, Sequence[str], Mapping[str, str]], steps: int, *,
+                       command: str = "go", every: int = 1, include_initial: bool = True,
+                       until: Optional[str] = None, as_dataframe: bool = False) -> Any:
+        """Run the model and record variables of each agent over time.
+
+        Like :meth:`collect`, with one row per agent and per recorded step
+        (the agent-level data of a data collector).
+
+        Parameters
+        ----------
+        agents : str
+            NetLogo code for the agents, evaluated again at each record
+            (``"sheep"``, ``"patches with [pcolor = green]"``).
+        variables : str, sequence of str or mapping
+            Variables or reporters run by each agent, or ``{column: reporter}``.
+        steps, command, every, include_initial, until, as_dataframe
+            As for :meth:`collect`.
+
+        Returns
+        -------
+        dict or pandas.DataFrame
+            Columns ``step``, the columns that identify the agent (see
+            :meth:`agent_table`) and one column per variable.
+
+        Examples
+        --------
+        >>> data = nl.collect_agents("sheep", "energy", steps=50, every=10, as_dataframe=True)
+        >>> data.groupby("step")["energy"].mean()
+        """
+        names, exprs = _named_reporters(variables)
+        if "step" in names:
+            raise ValueError('a variable cannot be named "step": that column holds the step numbers')
+        if as_dataframe:
+            _require_pandas()
+        every = max(1, int(every))
+        steps = int(steps)
+        table: Dict[str, list] = {"step": []}
+
+        def record(step: int) -> None:
+            columns, count = self._agent_rows(agents, names, exprs)
+            if count == 0:
+                return
+            if len(table) == 1:
+                table.update((name, []) for name in columns)
+            elif list(columns) != list(table)[1:]:
+                raise NetLogoError(f"{agents}: the agents changed kind during the run")
+            table["step"].extend([step] * count)
+            for name, values in columns.items():
+                table[name].extend(values)
+
+        if include_initial:
+            record(0)
+        done = last = 0
+        stopped = False
+        while done < steps and not stopped:
+            target = min(done + every, steps)
+            if not until:
+                self.go(target - done, command)
+                done = target
+            else:
+                while done < target:
+                    if self.observe(until):
+                        stopped = True
+                        break
+                    self.command(command)
+                    done += 1
+            if done != last:
+                record(done)
+                last = done
+        if len(table) == 1:                        # no agent at any record
+            table.update((name, []) for name in names)
+        return _table(table, as_dataframe)
 
     def schedule_reporters(self, reporters: Sequence[str], start_at_tick: int = 0,
                            interval_ticks: int = 1, stop_at_tick: int = -1,
@@ -887,7 +1073,7 @@ class NetLogo(WidgetsMixin):
             if ticks == previous:                  # go stopped: nothing new to record
                 break
             if ticks >= start_at_tick and (ticks - start_at_tick) % interval_ticks == 0:
-                results.append(self.report(list(reporters)))
+                results.append(self.observe(list(reporters)))
         return results
 
     # --- background runs: start / pause / resume / stop ---------------------------
@@ -948,6 +1134,23 @@ class NetLogo(WidgetsMixin):
         runner = self._runner
         if runner is not None:
             runner.resumed.set()
+
+    @contextlib.contextmanager
+    def hold(self) -> Iterator["NetLogo"]:
+        """Keep a background run from stepping during a ``with`` block.
+
+        The calls of the block then see one state of the model: no step of
+        :meth:`start` runs between them.  The run is not paused: it goes on
+        when the block ends.
+
+        Examples
+        --------
+        >>> with nl.hold():
+        ...     sheep = nl.turtles("sheep")
+        ...     energy = nl.of(sheep, "energy")
+        """
+        with self._lock:
+            yield self
 
     def stop(self, timeout: Optional[float] = None) -> int:
         """End the background run and return how many steps it made.
@@ -1569,6 +1772,88 @@ class NetLogo(WidgetsMixin):
         """Save an image (PNG) of the view; returns its absolute path."""
         path = _path(path)
         self.command(f"export-view {to_netlogo(path)}")
+        return path
+
+    def _view_image(self) -> Any:
+        """The view as a java.awt.image.BufferedImage."""
+        with self._lock:
+            self._check_open()
+            try:
+                return self._ws.exportView()
+            except self._java_exception as exc:
+                raise _error_from_java(exc, None) from None
+
+    def view_png(self) -> bytes:
+        """The image of the view as PNG data, without writing a file.
+
+        In Jupyter a session shows its view by itself: end a cell with ``nl``.
+        """
+        import jpype
+        stream = jpype.JClass("java.io.ByteArrayOutputStream")()
+        jpype.JClass("javax.imageio.ImageIO").write(self._view_image(), "png", stream)
+        return bytes(stream.toByteArray())
+
+    def _repr_png_(self) -> Optional[bytes]:
+        """What Jupyter displays for a session: the view."""
+        try:
+            return self.view_png()
+        except Exception:                          # a closed session: Jupyter shows the text
+            return None
+
+    def view_array(self) -> Any:
+        """The image of the view as a numpy array ``(height, width, 3)`` of red, green, blue (0-255).
+
+        Needs numpy.  Useful for image processing and for learning from pixels.
+        """
+        import numpy
+        image = self._view_image()
+        width, height = int(image.getWidth()), int(image.getHeight())
+        pixels = numpy.array(image.getRGB(0, 0, width, height, None, 0, width), dtype=numpy.uint32)
+        pixels = pixels.reshape(height, width)
+        return numpy.stack([(pixels >> 16) & 255, (pixels >> 8) & 255, pixels & 255],
+                           axis=-1).astype(numpy.uint8)
+
+    def record_gif(self, path: PathLike, steps: int, *, command: str = "go", every: int = 1,
+                   duration: float = 0.1, until: Optional[str] = None, loop: int = 0) -> str:
+        """Run the model and save the view as an animated GIF; returns its absolute path.
+
+        Parameters
+        ----------
+        path : str or os.PathLike
+            The GIF file to write.
+        steps : int
+            Number of times ``command`` runs.
+        command : str, default "go"
+            NetLogo commands run at each step.
+        every : int, default 1
+            One image every ``every`` steps (and one before the first step).
+        duration : float, default 0.1
+            Seconds each image stays on screen.
+        until : str, optional
+            NetLogo condition that ends the run early.
+        loop : int, default 0
+            How many times the animation repeats; 0 repeats for ever.
+
+        Notes
+        -----
+        Needs Pillow (``pip install pillow``).
+        """
+        try:
+            from PIL import Image
+        except ImportError as exc:
+            raise ImportError("record_gif needs Pillow: pip install pillow") from exc
+        import io
+        path = _path(path)
+        every = max(1, int(every))
+        frames = [Image.open(io.BytesIO(self.view_png())).convert("RGB")]
+        for step in range(1, int(steps) + 1):
+            if until and self.observe(until):
+                break
+            self.command(command)
+            if step % every == 0:
+                frames.append(Image.open(io.BytesIO(self.view_png())).convert("RGB"))
+        frames[0].save(path, save_all=True, append_images=frames[1:],
+                       duration=max(1, int(duration * 1000)), loop=loop)
         return path
 
     def export_interface(self, path: PathLike) -> str:
