@@ -140,6 +140,50 @@ window at that density.
     --8<-- "Examples/advanced/39-calibrate-model.py"
     ```
 
+### Designs, sensitivity and calibration { #sensitivity }
+
+[`advanced/46-sensitivity.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/46-sensitivity.py)
+- three questions about Wolf Sheep Predation, one function each. A Latin
+hypercube of 24 parameter sets covers three sliders and runs in parallel;
+`sensitivity()` gives the share of the variation of the number of sheep that
+each slider explains (sheep reproduction first); `calibrate()` finds, in 48
+runs, the slider values that give 150 sheep after 30 ticks.
+
+??? example "Code"
+
+    ```python title="advanced/46-sensitivity.py"
+    --8<-- "Examples/advanced/46-sensitivity.py"
+    ```
+
+### A model as a Gymnasium environment { #gym }
+
+[`advanced/47-gym-environment.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/47-gym-environment.py)
+- the Fire model as an environment for reinforcement learning: the agent
+sees the burned trees and the fires, and waits or puts two fires out. Two
+fixed policies are compared over three seeds: fighting when more than 5 fires
+burn leaves 360 burned trees on average instead of 1359. A learning library
+takes the same environment as it is.
+
+??? example "Code"
+
+    ```python title="advanced/47-gym-environment.py"
+    --8<-- "Examples/advanced/47-gym-environment.py"
+    ```
+
+### A language model that manages the model { #language-model }
+
+[`advanced/48-language-model-agent.py`](https://github.com/bouaziznourddine/netlogopy/blob/main/Examples/advanced/48-language-model-agent.py)
+- a park warden looks at Wolf Sheep Predation every 25 ticks and culls or
+releases animals so that no species dies out. The warden is a Python
+function: a fixed rule by default, or Claude through the Anthropic API when
+`NETLOGOPY_LLM=1` is set (each decision is then a paid request).
+
+??? example "Code"
+
+    ```python title="advanced/48-language-model-agent.py"
+    --8<-- "Examples/advanced/48-language-model-agent.py"
+    ```
+
 ### Routing cars on a road network { #routes }
 
 ![Cars routed by Python, rerouted around a closed road](assets/gifs/shortest-routes.gif){ .demo width="380" }

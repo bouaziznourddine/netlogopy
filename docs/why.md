@@ -8,11 +8,11 @@ describes it (checked in November 2026).
 
 ## At a glance
 
-| | netlogopy 1.0 | pynetlogo 0.5.2 |
+| | netlogopy 1.1 | pynetlogo 0.5.2 |
 |---|---|---|
 | Install | `pip install netlogopy` | `pip install pynetlogo` |
 | Depends on | JPype | JPype, NumPy, SciPy, pandas |
-| NetLogo versions | 6.x and 7.x | 6.1 and newer (6.3 support added in 0.5) |
+| NetLogo versions | 6.x and 7.x, both tested at each change | 6.1 and newer; its documentation names 6.3, and its author and users report that it works with NetLogo 7 ([issue 90](https://github.com/quaquel/pyNetLogo/issues/90)) |
 | Java | NetLogo's own runtime from NetLogo 6.3; Java 11+ for older NetLogo | the JVM found by JPype (`jvm_path` to choose one) |
 | How NetLogo runs | JVM inside the Python process (JPype), NetLogo's own classes | JVM inside the Python process (JPype), through a Java bridge (`netlogolink.jar`) |
 | NetLogo window | yes (Windows, Linux; not macOS) | yes, `gui=True` (not macOS) |
@@ -20,9 +20,14 @@ describes it (checked in November 2026).
 | Agent classes | `Turtle`, `Patch`, `Link` objects | none (NetLogo code) |
 | Background runs | `start`, `pause`, `resume`, `stop` | no |
 | Interface widgets from Python | add buttons, sliders, plots..., press buttons | no |
-| Results | Python values (lists, agents), pandas optional | Python values, NumPy arrays, pandas DataFrames |
+| Results | Python values (lists, agents), tables of agents, pandas and NumPy optional | Python values, NumPy arrays, pandas DataFrames |
+| Reading without changing the run | yes: recorded reporters use NetLogo's auxiliary random generator | not documented |
+| BehaviorSpace experiments of the model | read from the file and run in parallel: `run_behaviorspace` | no |
+| Designs, sensitivity, calibration | `latin_hypercube`, `sensitivity` (SALib), `calibrate` | examples with SALib, written by the user |
+| Reinforcement learning | Gymnasium environment: `netlogopy.rl.NetLogoEnv` | no |
+| Jupyter | a session displays its view; `view_array`, `record_gif` | no |
 | License | MIT | BSD-3-Clause |
-| Latest release | 1.0.2 | 0.5.2 (February 2024) |
+| Latest release | 1.1.0 | 0.5.2 (February 2024) |
 
 ## How NetLogo is run
 
@@ -71,11 +76,15 @@ pynetlogo is BSD-3-Clause, also permissive.
 
 ## When to pick which
 
-- **netlogopy**: NetLogo 7, the NetLogo window driven from Python, agents as
-  Python objects, background runs (`start` / `pause` / `stop`), widgets added
-  from Python, parallel experiments in one process.
-- **pynetlogo**: existing code written for it, the EMA Workbench, or its
-  NumPy / pandas results (`patch_report`, `repeat_report`).
+- **netlogopy**: the NetLogo window driven from Python, agents as Python
+  objects, background runs (`start` / `pause` / `stop`), widgets added from
+  Python, parallel experiments in one process, the BehaviorSpace experiments
+  of a model, sensitivity analysis and calibration in one call, a Gymnasium
+  environment.
+- **pynetlogo**: existing code written for it, or the EMA Workbench, which
+  uses it as its NetLogo connector.
+
+Both run NetLogo 6 and NetLogo 7.
 
 ## Sources
 

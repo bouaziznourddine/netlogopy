@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.1.0
+
+New functions for data, experiments and learning. Nothing is removed; two
+behaviours change, both listed first.
+
+### Changed
+
+- **Recording no longer changes a run.** `collect()`, `run_until()`,
+  `schedule_reporters()` and `run_experiment()` evaluate their reporters and
+  their `until` condition with NetLogo's auxiliary random generator, as the
+  monitors of the interface do. Before, recording a reporter such as
+  `[energy] of sheep` drew from the generator of the model and changed the
+  rest of the run. For a given seed, a run that records such a reporter
+  therefore gives other numbers than with 1.0: the numbers of the run that
+  records nothing.
+- **A run of `run_experiment()` ends when the model stops itself** (its `go`
+  procedure calls `stop`), as in BehaviorSpace. Before, `go` was called again
+  until `steps` or `until`; the `step` recorded for such a run is now the
+  step where the model stopped.
+
+### Added
+
+- `nl.observe(reporter)` and `nl.report(reporter, observe=True)`: read a
+  value without changing what the model does next.
+- `nl.agent_table(agents, variables)`: several variables of many agents in
+  one call, as columns or as a DataFrame; `nl.collect_agents(...)` records
+  such a table over time.
+- `behaviorspace_experiments(model)` and `run_behaviorspace(model, name)`:
+  the BehaviorSpace experiments saved in a `.nlogo` or `.nlogox` file, run in
+  parallel from Python.
+- `latin_hypercube()` and `random_sample()`: experiment designs for
+  `run_experiment()`.
+- `sensitivity()`: Sobol and Morris sensitivity analysis of a model in one
+  call (with SALib).
+- `calibrate()`: search of the parameter values that give a target result,
+  or the smallest or largest result (differential evolution, pure Python).
+- `netlogopy.rl.NetLogoEnv`: a model as a Gymnasium environment, for
+  reinforcement learning libraries.
+- `nl.view_png()`, `nl.view_array()`, `nl.record_gif()`: the view in memory,
+  as a numpy array, or as an animation; in Jupyter a session displays its view.
+- `with nl.hold():` keeps a background run still for a group of calls.
+- `run_experiment(final=...)`: commands run at the end of each run.
+- Optional sets of dependencies: `netlogopy[analysis]`, `[rl]`, `[images]`,
+  `[all]`.
+- Examples 46 (designs, sensitivity, calibration), 47 (Gymnasium
+  environment) and 48 (a language model that manages the model).
+
 ## 1.0.2
 
 The version published on PyPI after 1.0.0: the corrections of 1.0.1 below,

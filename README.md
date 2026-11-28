@@ -53,6 +53,11 @@ with NetLogo("Wolf Sheep Predation.nlogo") as nl:    # headless by default
 - **Experiments**: parameter sweeps with repetitions and seeds over parallel
   headless sessions (like BehaviorSpace), time series as dicts or pandas
   DataFrames.
+- **Analysis in one call**: the BehaviorSpace experiments saved in a model,
+  Latin hypercube designs, Sobol and Morris sensitivity analysis, calibration
+  towards a target, tables of agents; recording a value never changes a run.
+- **Learning**: a model as a Gymnasium environment for reinforcement
+  learning, the view as an image array, and in Jupyter a session shows its view.
 - **Clear errors**: `NetLogoCompileError` and `NetLogoRuntimeError`, with the
   NetLogo code that failed.
 - **NetLogo 6 and 7**, any model, MIT license.

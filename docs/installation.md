@@ -21,6 +21,11 @@ With pandas and numpy (DataFrames and array grids):
 pip install "netlogopy[data]"
 ```
 
+Other optional sets: `[analysis]` (sensitivity analysis: SALib), `[rl]`
+(Gymnasium environment), `[images]` (`view_array`, `record_gif`: numpy,
+Pillow), or `[all]`.
+
+
 ## With conda
 
 The repository has an `environment.yml` with Python, Java 17 and netlogopy:

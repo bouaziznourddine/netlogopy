@@ -79,3 +79,55 @@ with ThreadPoolExecutor(4) as pool:
 
 For parameter sweeps, [`run_experiment()`](data.md#experiments) does this for
 you.
+
+## A consistent look at a running model
+
+While `start()` runs, each call sees the model at a different step. `hold()`
+keeps the run still for a group of calls:
+
+```python
+with nl.hold():                       # no step runs inside the block
+    sheep = nl.turtles("sheep")
+    energy = nl.of(sheep, "energy")
+```
+
+## The view in memory, and in Jupyter
+
+```python
+nl                                    # last line of a Jupyter cell: shows the view
+image = nl.view_array()               # numpy array (height, width, 3), 0-255
+png = nl.view_png()                   # PNG data, no file written
+nl.record_gif("run.gif", steps=200, every=2)     # runs the model, saves an animation
+```
+
+`view_array()` needs numpy and `record_gif()` needs Pillow
+(`pip install "netlogopy[images]"`). They work headless and in the window.
+
+## Reinforcement learning
+
+`netlogopy.rl.NetLogoEnv` presents a model as a
+[Gymnasium](https://gymnasium.farama.org) environment, so that a learning
+library trains on it without glue code:
+
+```python
+from netlogopy.rl import NetLogoEnv
+
+env = NetLogoEnv("Fire.nlogo",
+                 observation=["burned-trees", "count fires"],     # numbers, or lists of numbers
+                 actions=["", "ask up-to-n-of 2 fires [ die ]"],  # action 0, action 1
+                 reward="0 - count fires",
+                 done="not any? turtles", max_steps=400)
+
+observation, info = env.reset(seed=1)
+observation, reward, terminated, truncated, info = env.step(1)
+
+from stable_baselines3 import PPO     # or any library that takes a Gymnasium environment
+PPO("MlpPolicy", env).learn(20_000)
+```
+
+An action runs its NetLogo commands, then one step of the model. `actions` can
+also be a function `actions(nl, action)`, with its `action_space`, and
+`reward` a function `reward(nl)`. An episode ends when `done` is true or when
+the model stops itself; `max_steps` cuts it short. `render_mode="rgb_array"`
+gives the image of the view, and `gui=True` shows the agent at work in the
+NetLogo window. Install with `pip install "netlogopy[rl]"`.

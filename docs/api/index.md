@@ -8,9 +8,9 @@ and docstrings.
 | Group | Members |
 |---|---|
 | Session | `NetLogo(model=None, gui=False, netlogo_home=None, java_home=None, jvm_args=(), setup=False)`, `open_model`, `close` / `close_model`, `closed`, `gui`, `model_path`, `netlogo_version` |
-| Code | `command(*commands)`, `report(reporter or list)`, `report_java` |
-| Simulation | `setup`, `go(times)`, `run_until(condition, max_steps)`, `collect(...)`, `schedule_reporters(...)` |
-| Background run | `start(command, interval, max_steps, until)`, `pause`, `resume`, `stop(timeout)`, `halt`, `wait(timeout)`, `running`, `paused`, `steps_run` |
+| Code | `command(*commands)`, `report(reporter or list)`, `observe(reporter or list)`, `report_java` |
+| Simulation | `setup`, `go(times)`, `run_until(condition, max_steps)`, `collect(...)`, `collect_agents(...)`, `agent_table(...)`, `schedule_reporters(...)` |
+| Background run | `start(command, interval, max_steps, until)`, `pause`, `resume`, `stop(timeout)`, `halt`, `wait(timeout)`, `hold()`, `running`, `paused`, `steps_run` |
 | Ticks | `ticks`, `tick`, `tick_advance`, `reset_ticks`, `clear_ticks` |
 | Globals | `globals[...]`, `get_global`, `set_global`, `global_names` |
 | World | `min_pxcor`, `max_pxcor`, `min_pycor`, `max_pycor`, `world_width`, `world_height`, `resize_world`, `patch_size`, `set_patch_size`, `wrap_x`, `wrap_y`, `set_topology`, `random_seed`, `new_seed`, `clear_all`, `clear_turtles`, `clear_patches`, `clear_links`, `clear_globals`, `clear_drawing`, `display`, `no_display` |
@@ -19,7 +19,7 @@ and docstrings.
 | Random numbers | `random`, `random_float`, `random_normal`, `random_poisson`, `random_exponential`, `random_gamma`, `random_xcor`, `random_ycor`, `random_pxcor`, `random_pycor` |
 | Colors, angles | `scale_color`, `shade_of`, `wrap_color`, `extract_rgb`, `extract_hsb`, `approximate_rgb`, `approximate_hsb`, `hsb`, `subtract_headings` |
 | Patches | `patch_grid`, `set_patch_grid`, `diffuse`, `import_pcolors`, `import_drawing` |
-| Files | `export_view`, `export_interface`, `export_world`, `import_world`, `export_output`, `export_plot`, `export_all_plots` |
+| Files | `export_view`, `view_png`, `view_array`, `record_gif`, `export_interface`, `export_world`, `import_world`, `export_output`, `export_plot`, `export_all_plots` |
 | NetLogo file I/O | `file_open`, `file_close`, `file_close_all`, `file_flush`, `file_delete`, `file_exists`, `file_print`, `file_show`, `file_type`, `file_write`, `file_read`, `file_read_line`, `file_read_characters`, `file_at_end`, `set_current_directory` |
 | Output | `show`, `output_print`, `output_show`, `output_type`, `output_write`, `clear_output` |
 | Plots | `plot`, `plotxy`, `histogram`, `set_current_plot`, `set_current_plot_pen`, `create_temporary_plot_pen`, `clear_plot`, `clear_all_plots`, `set_plot_pen_color`, `set_plot_pen_mode`, `set_plot_pen_interval`, `plot_pen_up`, `plot_pen_down`, `plot_pen_reset`, `set_histogram_num_bars`, `set_plot_x_range`, `set_plot_y_range`, `auto_plot_on`, `auto_plot_off`, `setup_plots`, `update_plots`, `plot_name`, `plot_pen_exists`, `plot_x_range`, `plot_y_range`, `autoplot` (NetLogo 7) |
